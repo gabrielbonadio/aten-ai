@@ -1,0 +1,24 @@
+---
+description: RBAC e Permissões de Rotas
+globs: "**/routes.ts,**/*.routes.ts,**/routes/**/*.ts"
+alwaysApply: false
+---
+
+# RBAC e Permissões de Rotas
+
+## Middleware
+
+- Use `ensureAuthenticated` antes de qualquer rota que dependa de `req.user`.
+- Use `ensureRole(['ADMIN', ...])` **logo após** `ensureAuthenticated` quando a rota exigir papéis específicos.
+
+## Regras obrigatórias
+
+- Toda rota que realiza ações **destrutivas** (`DELETE`) ou **alterações sensíveis** (`PUT` / `PATCH` em configurações ou dados críticos) **deve** usar `ensureRole(['ADMIN'])` (ou o conjunto de papéis definido pelo produto), **sempre** encadeado após `ensureAuthenticated`.
+- Rotas de **leitura** (`GET`) e **criação básica** (`POST`) normalmente ficam acessíveis a `ADMIN` e `MEMBER`, salvo especificação contrária do produto.
+- **Ordem dos middlewares:** `ensureAuthenticated` → `ensureRole(...)` → handler do controller.
+
+## Exemplo
+
+```ts
+router.delete('/resource/:id', ensureAuthenticated, ensureRole(['ADMIN']), Controller.remove);
+```

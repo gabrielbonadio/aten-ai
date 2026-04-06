@@ -1,0 +1,35 @@
+---
+description: Consultar stack de skills do Aten AI antes de implementar ou alterar lógica relevante
+alwaysApply: true
+---
+
+# Stack de skills (micro SaaS B2B — restaurantes, clínicas, consultórios)
+
+Antes de **implementar funcionalidade**, **alterar auth/dados**, **UI pública**, **multi-tenant**, **custos/infra** ou **observabilidade**, abre e segue o `SKILL.md` adequado em `.agent-skills/<nome>/` (junctions para skills em `%USERPROFILE%\.claude\skills` e `%USERPROFILE%\.agents\skills`).
+
+## Ordem de prioridade — produto e dados
+
+1. **security** — dados de clientes finais, sessões, segredos, LGPD, minimização de dados, APIs.
+2. **frontend-design** — interfaces para donos de negócio (clareza, confiança, acessibilidade, consistência).
+3. **scalability** — modelo multi-tenant, limites, filas, crescimento sem refatoração emergencial.
+4. **cost-reducer** — decisões que impactam custo (APIs, armazenamento, jobs, terceiros).
+5. **customer-support** — fluxos de ajuda, mensagens de erro, onboarding, tom de produto.
+6. **researcher** — quando precisares de validar requisitos, normas ou alternativas com rigor.
+7. **self-healing** — falhas intermitentes, retries, degradação elegante, monitorização.
+
+## Ordem — código Node/TypeScript e fluxo de trabalho
+
+8. **nodejs-best-practices** — backend Node.js, performance, padrões e armadilhas comuns.
+9. **typescript-advanced-types** — modelagem de tipos, APIs tipadas, refactors seguros em TS.
+10. **writing-plans** — antes de grandes mudanças: planear tarefas e critérios de aceitação.
+11. **systematic-debugging** — bugs não óbvios: reproduzir, isolar, confirmar causa antes de corrigir.
+12. **find-skills** — quando precisares de descobrir ou escolher outra skill no ecossistema.
+
+## Quando não precisas de ler tudo
+
+- Mudança trivial (typo, rename local) sem impacto em dados ou UX: não bloqueies.
+- **microsoft-foundry** (em `~\.agents\skills\microsoft-foundry`): só se o trabalho for Azure AI Foundry / agentes hospedados nesse stack (não há junction no repo por omissão; instala globalmente se precisares).
+
+## Se `.agent-skills` estiver vazio noutra máquina
+
+Executa `.\.agent-skills\setup-agent-skills.ps1` na raiz do repositório `aten-ai`.

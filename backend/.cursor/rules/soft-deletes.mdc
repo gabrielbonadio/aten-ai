@@ -1,0 +1,39 @@
+---
+description: Sequelize Soft Deletes (Paranoid)
+globs: "**/migrations/**/*.js,**/models/**/*.ts"
+alwaysApply: false
+---
+
+# Sequelize Soft Deletes (Paranoid)
+
+## Obrigatório no projeto
+
+- **TODO** model e migration novos **devem** suportar exclusão lógica (soft delete).
+
+## Migrations
+
+- Sempre inclua o campo:
+
+```js
+deletedAt: {
+  type: Sequelize.DATE,
+  allowNull: true
+}
+```
+
+- Em tabelas novas (`createTable`), inclua `deletedAt` junto com `createdAt` / `updatedAt` quando aplicável.
+
+## Models (Sequelize)
+
+- Sempre configure:
+
+```ts
+timestamps: true,
+paranoid: true,
+```
+
+- Declare e mapeie explicitamente **`deletedAt`** no `init` (ex.: `deletedAt: DataTypes.DATE`) e na classe do model (`declare deletedAt: CreationOptional<Date | null>`).
+
+## Exceções (raras)
+
+- Exclusão física (`paranoid: false` ou `destroy({ force: true })`) só em casos excepcionais — por exemplo **tabelas pivot N:N** sem coluna de auditoria — e **deve** ser justificada em comentário no código ou na migration.

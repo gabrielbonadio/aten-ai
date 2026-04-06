@@ -1,0 +1,23 @@
+# Dependências e artefatos de build (não versionar)
+node_modules/
+dist/
+build/
+
+# Variáveis de ambiente — NUNCA versionar credenciais
+.env
+.env.*
+!.env.example
+
+# Junctions de skills (recriar com .agent-skills/setup-agent-skills.ps1)
+.agent-skills/security
+.agent-skills/frontend-design
+.agent-skills/scalability
+.agent-skills/cost-reducer
+.agent-skills/customer-support
+.agent-skills/researcher
+.agent-skills/self-healing
+.agent-skills/nodejs-best-practices
+.agent-skills/typescript-advanced-types
+.agent-skills/writing-plans
+.agent-skills/systematic-debugging
+.agent-skills/find-skills

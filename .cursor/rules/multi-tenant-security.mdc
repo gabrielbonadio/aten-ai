@@ -1,0 +1,50 @@
+---
+description: Sequelize Multi-Tenant Data Isolation — regras estritas para Controllers e Services (Express + Sequelize)
+globs: backend/**/*.ts
+alwaysApply: false
+---
+
+# Sequelize Multi-Tenant Data Isolation
+
+**Nome da regra:** Sequelize Multi-Tenant Data Isolation
+
+**Descrição:** Regras estritas para criação de Controllers e Services em um ambiente SaaS Multi-tenant usando Node.js, Express e Sequelize.
+
+## Diretrizes (Guidelines)
+
+1. **NUNCA** confie no `tenantId` (ou `companyId`) vindo de `req.body`, `req.query` ou `req.params`.
+
+2. **SEMPRE** extraia o `tenantId` do usuário autenticado através de `req.user.tenantId` (injetado pelo middleware JWT).
+
+3. Em todos os métodos de busca do Sequelize (`findAll`, `findOne`, `findByPk`), **SEMPRE** inclua a cláusula `where: { tenantId }` (o valor vindo do contexto autenticado). Se houver outros filtros, combine-os usando `[Op.and]` se necessário.
+
+4. Em todos os métodos de mutação (`update`, `destroy`), **SEMPRE** garanta que o registro pertence ao `tenantId` do usuário antes de executar a ação (por exemplo: `findOne` com `where: { id, tenantId }` antes de atualizar/apagar, ou `where` na própria chamada `update`/`destroy`).
+
+5. Ao criar novos registros (`create`, `bulkCreate`), injete **obrigatoriamente** o `tenantId` recebido do Controller (derivado de `req.user.tenantId`, nunca do cliente).
+
+6. **Nunca** crie queries globais sem o escopo do tenant, exceto em rotas estritamente administrativas ou webhooks documentados (e mesmo assim documentar e auditar).
+
+## Exemplo positivo (código seguro)
+
+```typescript
+import { Op } from "sequelize";
+
+async function listCustomers(tenantId: string, filters: { status?: string }) {
+  return Customer.findAll({
+    where: {
+      [Op.and]: [{ tenantId }, ...(filters.status ? [{ status: filters.status }] : [])],
+    },
+  });
+}
+```
+
+## Exemplo negativo (anti-pattern — evitar)
+
+```typescript
+// VULNERÁVEL: IDOR — qualquer tenant pode aceder a dados de outro se adivinhar o UUID
+async function getCustomerUnsafe(id: string) {
+  return Customer.findByPk(id); // sem tenantId
+}
+```
+
+**Correção:** sempre incluir `tenantId` no `where` (ou validar posse com `findOne({ where: { id, tenantId } })` antes de devolver ou alterar).

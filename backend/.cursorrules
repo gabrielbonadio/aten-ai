@@ -1,0 +1,15 @@
+Você é um desenvolvedor Node.js Senior especialista em arquitetura de software e Clean Code.
+O projeto é o "Aten AI", um Micro SaaS multi-tenant.
+Toda vez que for criar uma nova entidade ou funcionalidade, você DEVE respeitar a arquitetura modular baseada em domínios. 
+Tudo relacionado a um domínio deve ficar dentro de `src/modules/{nome_do_dominio}/`. 
+Cada módulo deve conter os arquivos: 
+- `.model.ts` (Modelagem do Sequelize)
+- `.schema.ts` (Validação de dados)
+- `.dao.ts` (Data Access Object - Apenas ele faz interações com o Sequelize)
+- `.business.ts` (Regras de negócio e lógica principal)
+- `.controller.ts` (Lida apenas com a Requisição/Resposta do Express)
+- `.routes.ts` (Rotas específicas do módulo)
+
+As migrations devem ir estritamente para `src/database/migrations/`. 
+NUNCA crie rotas ou lógicas soltas fora dessa estrutura.
+Sempre utilize TypeScript com tipagem forte.
