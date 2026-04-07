@@ -2,9 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import { AppError } from '../errors/AppError';
 
-export function validateSchema(schema: Joi.ObjectSchema): (req: Request, res: Response, next: NextFunction) => void {
+export function validateSchema(
+  schema: Joi.ObjectSchema,
+  target: 'body' | 'query' = 'body'
+): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, _res: Response, next: NextFunction): void => {
-    const { error, value } = schema.validate(req.body, {
+    const input = target === 'query' ? req.query : req.body;
+    const { error, value } = schema.validate(input, {
       abortEarly: false,
       stripUnknown: true
     });
@@ -15,7 +19,11 @@ export function validateSchema(schema: Joi.ObjectSchema): (req: Request, res: Re
       return;
     }
 
-    req.body = value;
+    if (target === 'query') {
+      req.query = value;
+    } else {
+      req.body = value;
+    }
     next();
   };
 }

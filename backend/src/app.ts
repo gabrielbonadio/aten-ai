@@ -4,9 +4,7 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './shared/docs/swagger';
 import { errorHandler } from './shared/middlewares/errorHandler';
-import authRoutes from './modules/auth/routes';
-import customersRoutes from './modules/customers/customers.routes';
-import tenantsRoutes from './modules/tenants/routes';
+import routes from './routes';
 
 class App {
   public express: Application;
@@ -35,9 +33,7 @@ class App {
 
     this.express.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-    this.express.use(authRoutes);
-    this.express.use(customersRoutes);
-    this.express.use(tenantsRoutes);
+    this.express.use(routes);
 
     this.express.use(errorHandler);
   }

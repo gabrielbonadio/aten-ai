@@ -30,7 +30,14 @@ const options: swaggerJSDoc.Options = {
       }
     }
   },
-  apis: [path.join(process.cwd(), 'src/modules/auth/routes.ts')]
+  apis: [
+    path.join(process.cwd(), 'src/modules/auth/routes.ts'),
+    path.join(process.cwd(), 'src/modules/tutors/routes.ts'),
+    path.join(process.cwd(), 'src/modules/pets/routes.ts'),
+    path.join(process.cwd(), 'src/modules/appointments/routes.ts'),
+    path.join(process.cwd(), 'src/modules/medical-records/routes.ts'),
+    path.join(process.cwd(), 'src/modules/dashboard/routes.ts')
+  ]
 };
 
 export const swaggerSpec = swaggerJSDoc(options);

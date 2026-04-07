@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticated';
 import AuthController from './controllers/AuthController';
-import { loginSchema, signUpSchema } from './schemas/auth.schema';
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema, signUpSchema } from './schemas/auth.schema';
 
 const authRoutes = Router();
 
@@ -144,6 +144,70 @@ authRoutes.post('/auth/signup', validateSchema(signUpSchema), AuthController.sig
  *               $ref: '#/components/schemas/ErrorMessage'
  */
 authRoutes.post('/auth/login', validateSchema(loginSchema), AuthController.login);
+
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Solicitar recuperação de senha
+ *     description: Sempre retorna sucesso (evita vazamento se o e-mail existe ou não).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "maria@empresa.com"
+ *     responses:
+ *       204:
+ *         description: Solicitação processada (silenciosa)
+ *       400:
+ *         description: Erro de validação (Joi)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ */
+authRoutes.post('/auth/forgot-password', validateSchema(forgotPasswordSchema), AuthController.forgotPassword);
+
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Redefinir senha usando token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "e3b0c44298fc1c149afbf4c8996fb924..."
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "NovaSenha@123"
+ *     responses:
+ *       204:
+ *         description: Senha redefinida com sucesso
+ *       400:
+ *         description: Token inválido/expirado ou erro de validação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ */
+authRoutes.post('/auth/reset-password', validateSchema(resetPasswordSchema), AuthController.resetPassword);
 authRoutes.get('/auth/me', ensureAuthenticated, AuthController.me);
 
 export default authRoutes;
