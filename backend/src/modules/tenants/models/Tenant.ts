@@ -7,6 +7,11 @@ class Tenant extends Model<InferAttributes<Tenant>, InferCreationAttributes<Tena
   declare id: CreationOptional<number>;
   declare name: string;
   declare slug: string;
+  /** CNPJ ou documento fiscal (opcional). */
+  declare document: CreationOptional<string | null>;
+  declare phone: CreationOptional<string | null>;
+  declare address: CreationOptional<string | null>;
+  declare email: CreationOptional<string | null>;
   declare plan: CreationOptional<TenantPlan>;
   declare status: CreationOptional<TenantStatus>;
 
@@ -31,6 +36,22 @@ class Tenant extends Model<InferAttributes<Tenant>, InferCreationAttributes<Tena
           type: DataTypes.STRING(120),
           allowNull: false,
           unique: true
+        },
+        document: {
+          type: DataTypes.STRING(18),
+          allowNull: true
+        },
+        phone: {
+          type: DataTypes.STRING(32),
+          allowNull: true
+        },
+        address: {
+          type: DataTypes.STRING(500),
+          allowNull: true
+        },
+        email: {
+          type: DataTypes.STRING(255),
+          allowNull: true
         },
         plan: {
           type: DataTypes.ENUM('free', 'pro'),

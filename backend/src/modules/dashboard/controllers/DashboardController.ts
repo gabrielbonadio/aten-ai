@@ -14,6 +14,12 @@ class DashboardController {
     const metrics = await dashboardService.getMetrics(tenantId);
     res.status(200).json(metrics);
   }
+
+  async metrics(req: Request, res: Response): Promise<void> {
+    const tenantId = resolveTenantId(req);
+    const payload = await dashboardService.getMetricsV2(tenantId);
+    res.status(200).json(payload);
+  }
 }
 
 export default new DashboardController();

@@ -3,15 +3,15 @@ import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular
 import { LucideAngularModule } from 'lucide-angular';
 import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
 import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
+import type { DashboardMetricsResponse } from '../../core/services/dashboard.service';
+import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { ThemeService } from '../../shared/theme/theme.service';
 import { AppointmentCreateModalComponent } from '../../features/appointments/appointment-create-modal.component';
 
-type StatCardView = {
+type DashboardCardView = {
   label: string;
-  hint: string;
   icon: string;
-  /** null = em carregamento (mostra skeleton) */
   value: number | null;
 };
 
@@ -24,55 +24,85 @@ type StatCardView = {
 export class DashboardComponent implements OnInit {
   private readonly dashboardService = inject(DashboardService);
   readonly theme = inject(ThemeService);
+  readonly brand = inject(ClinicBrandingService);
 
   readonly sidebarCollapsed = signal(false);
 
   readonly navItems = APP_SIDEBAR_NAV;
 
-  readonly clinicName = signal('Clínica Vet');
-  readonly planLabel = signal('Clínica Vet v1.0');
-
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 
   readonly metricsLoading = signal(true);
-  readonly totalPets = signal(0);
-  readonly totalTutors = signal(0);
-  readonly appointmentsToday = signal(0);
+  readonly dashboardData = signal<DashboardMetricsResponse | null>(null);
 
   readonly appointmentModalOpen = signal(false);
 
   @ViewChild(AppointmentCreateModalComponent)
   private readonly appointmentModal?: AppointmentCreateModalComponent;
 
-  readonly statCards = computed<StatCardView[]>(() => {
+  readonly todayAppointments = computed(() => {
+    const data = this.dashboardData();
+    const list = data?.todayAppointments;
+    return Array.isArray(list) ? (list as any[]) : [];
+  });
+
+  appointmentTimeLabel(a: any): string {
+    const iso = typeof a?.date === 'string' ? a.date : typeof a?.scheduledAt === 'string' ? a.scheduledAt : '';
+    const d = new Date(iso);
+    if (!iso || Number.isNaN(d.getTime())) return '—';
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  appointmentPetName(a: any): string {
+    return a?.pet?.name?.trim?.() || '—';
+  }
+
+  appointmentTutorName(a: any): string {
+    return a?.pet?.tutor?.name?.trim?.() || '—';
+  }
+
+  appointmentTypeLabel(a: any): string {
+    const t = String(a?.type ?? '').trim().toUpperCase();
+    if (t === 'CONSULTATION') return 'Consulta';
+    if (t === 'VACCINE') return 'Vacina';
+    if (t === 'SURGERY') return 'Cirurgia';
+    if (t === 'OTHER') return 'Outro';
+    return t || '—';
+  }
+
+  typePillClass(a: any): string {
+    const t = String(a?.type ?? '').trim().toUpperCase();
+    if (t === 'VACCINE') return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300';
+    if (t === 'SURGERY') return 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300';
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300';
+  }
+
+  readonly cards = computed<DashboardCardView[]>(() => {
     const loading = this.metricsLoading();
+    const data = this.dashboardData();
+    const m = data?.metrics;
     return [
       {
         label: 'Pets cadastrados',
-        hint: 'Base do tenant',
-        icon: 'dog',
-        value: loading ? null : this.totalPets()
+        icon: 'paw-print',
+        value: loading ? null : (m?.totalPets ?? 0)
       },
       {
         label: 'Tutores',
-        hint: 'Clientes ativos',
         icon: 'users',
-        value: loading ? null : this.totalTutors()
+        value: loading ? null : (m?.totalTutors ?? 0)
       },
       {
         label: 'Agendamentos hoje',
-        hint: 'Exceto cancelados',
         icon: 'calendar',
-        value: loading ? null : this.appointmentsToday()
+        value: loading ? null : (m?.appointmentsTodayCount ?? 0)
       }
     ];
   });
 
   ngOnInit(): void {
     this.dashboardService.getMetrics().subscribe((m) => {
-      this.totalPets.set(m.totalPets);
-      this.totalTutors.set(m.totalTutors);
-      this.appointmentsToday.set(m.appointmentsToday);
+      this.dashboardData.set(m);
       this.metricsLoading.set(false);
     });
   }
@@ -88,9 +118,7 @@ export class DashboardComponent implements OnInit {
 
   onAppointmentCreated(): void {
     this.dashboardService.getMetrics().subscribe((m) => {
-      this.totalPets.set(m.totalPets);
-      this.totalTutors.set(m.totalTutors);
-      this.appointmentsToday.set(m.appointmentsToday);
+      this.dashboardData.set(m);
     });
   }
 

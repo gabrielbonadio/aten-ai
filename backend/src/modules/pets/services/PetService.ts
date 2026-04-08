@@ -1,5 +1,8 @@
 import { Op } from 'sequelize';
 import { NotFoundError } from '../../../shared/errors/AppError';
+import User from '../../auth/models/User';
+import Appointment from '../../appointments/models/Appointment';
+import MedicalRecord from '../../medical-records/models/MedicalRecord';
 import Tutor from '../../tutors/models/Tutor';
 import Pet from '../models/Pet';
 
@@ -36,12 +39,55 @@ class PetService {
   async findAll(tenantId: number): Promise<Pet[]> {
     return Pet.findAll({
       where: { tenantId },
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: Tutor,
+          as: 'tutor',
+          required: false,
+          attributes: ['id', 'name', 'phone', 'email']
+        }
+      ]
     });
   }
 
   async findById(id: string, tenantId: number): Promise<Pet> {
-    const pet = await Pet.findOne({ where: { [Op.and]: [{ id }, { tenantId }] } });
+    const pet = await Pet.findOne({
+      where: { [Op.and]: [{ id }, { tenantId }] },
+      include: [
+        {
+          model: Tutor,
+          as: 'tutor',
+          required: false,
+          attributes: ['id', 'name', 'phone', 'email']
+        },
+        {
+          model: Appointment,
+          as: 'appointments',
+          required: false,
+          where: { tenantId },
+          separate: true,
+          order: [['date', 'DESC']]
+        },
+        {
+          model: MedicalRecord,
+          as: 'medicalRecords',
+          required: false,
+          where: { tenantId },
+          separate: true,
+          order: [['createdAt', 'DESC']],
+          include: [
+            {
+              model: User,
+              as: 'veterinarian',
+              required: false,
+              attributes: ['id', 'name'],
+              where: { tenantId }
+            }
+          ]
+        }
+      ]
+    });
     if (!pet) throw new NotFoundError('Pet não encontrado.');
     return pet;
   }

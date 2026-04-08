@@ -6,6 +6,7 @@ class Tutor extends Model<InferAttributes<Tutor>, InferCreationAttributes<Tutor>
   declare name: string;
   declare email: CreationOptional<string | null>;
   declare phone: string;
+  declare address: CreationOptional<string | null>;
 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -35,6 +36,10 @@ class Tutor extends Model<InferAttributes<Tutor>, InferCreationAttributes<Tutor>
         phone: {
           type: DataTypes.STRING(32),
           allowNull: false
+        },
+        address: {
+          type: DataTypes.STRING(500),
+          allowNull: true
         },
         createdAt: DataTypes.DATE,
         updatedAt: DataTypes.DATE,

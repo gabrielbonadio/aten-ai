@@ -1,8 +1,13 @@
 import { Op } from 'sequelize';
 import { AppError, NotFoundError } from '../../../shared/errors/AppError';
+import type { IWebhookProvider } from '../../../shared/providers/WebhookProvider/IWebhookProvider';
+import { N8nWebhookProvider } from '../../../shared/providers/WebhookProvider/N8nWebhookProvider';
+import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
 import Appointment from '../../appointments/models/Appointment';
 import Pet from '../../pets/models/Pet';
 import User from '../../auth/models/User';
+import Tenant from '../../tenants/models/Tenant';
+import Tutor from '../../tutors/models/Tutor';
 import MedicalRecord from '../models/MedicalRecord';
 
 export type CreateMedicalRecordInput = {
@@ -17,8 +22,20 @@ export type CreateMedicalRecordInput = {
 export type UpdateMedicalRecordInput = Partial<Omit<CreateMedicalRecordInput, 'petId'>>;
 
 class MedicalRecordService {
+  constructor(private readonly webhookProvider: IWebhookProvider = new N8nWebhookProvider()) {}
+
   async create(data: CreateMedicalRecordInput, tenantId: number, veterinarianId: string): Promise<MedicalRecord> {
-    const pet = await Pet.findOne({ where: { [Op.and]: [{ id: data.petId }, { tenantId }] } });
+    const pet = await Pet.findOne({
+      where: { [Op.and]: [{ id: data.petId }, { tenantId }] },
+      include: [
+        {
+          model: Tutor,
+          as: 'tutor',
+          required: true,
+          where: { tenantId }
+        }
+      ]
+    });
     if (!pet) throw new NotFoundError('Pet não encontrado.');
 
     if (data.appointmentId) {
@@ -31,7 +48,7 @@ class MedicalRecordService {
       }
     }
 
-    return MedicalRecord.create({
+    const record = await MedicalRecord.create({
       tenantId,
       petId: data.petId,
       appointmentId: data.appointmentId ?? null,
@@ -41,6 +58,22 @@ class MedicalRecordService {
       prescription: data.prescription?.trim() || null,
       weight: data.weight ?? null
     });
+
+    const tenant = await Tenant.findByPk(tenantId);
+    const tutor = (pet as Pet & { tutor: Tutor }).tutor;
+    if (tenant && tutor) {
+      void this.webhookProvider.dispatchMedicalRecordCreated({
+        idProntuario: record.id,
+        idTenant: String(tenantId),
+        nomePet: pet.name,
+        nomeTutor: tutor.name,
+        telefoneTutor: formatBrazilPhoneE164(tutor.phone),
+        prescricao: record.prescription,
+        nomeClinica: tenant.name
+      });
+    }
+
+    return record;
   }
 
   async findAll(tenantId: number): Promise<MedicalRecord[]> {

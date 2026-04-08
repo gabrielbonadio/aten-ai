@@ -10,6 +10,15 @@ export type DashboardMetrics = {
   recentAppointments: Appointment[];
 };
 
+export type DashboardMetricsResponse = {
+  metrics: {
+    totalPets: number;
+    totalTutors: number;
+    appointmentsTodayCount: number;
+  };
+  todayAppointments: Appointment[];
+};
+
 function toTenantIdNumber(tenantId: string): number {
   const n = Number(tenantId);
   return Number.isFinite(n) ? n : NaN;
@@ -65,6 +74,57 @@ class DashboardService {
     ]);
 
     return { totalPets, totalTutors, appointmentsToday, recentAppointments };
+  }
+
+  async getMetricsV2(tenantId: string): Promise<DashboardMetricsResponse> {
+    const tenantIdNumber = toTenantIdNumber(tenantId);
+    if (!Number.isFinite(tenantIdNumber)) {
+      throw new Error('tenantId inválido no contexto autenticado.');
+    }
+
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    const [totalPets, totalTutors, appointmentsTodayCount, todayAppointments] = await Promise.all([
+      Pet.count({ where: { tenantId: tenantIdNumber } }),
+      Tutor.count({ where: { tenantId: tenantIdNumber } }),
+      Appointment.count({
+        where: {
+          [Op.and]: [{ tenantId: tenantIdNumber }, { date: { [Op.between]: [start, end] } }]
+        }
+      }),
+      Appointment.findAll({
+        where: {
+          [Op.and]: [{ tenantId: tenantIdNumber }, { date: { [Op.between]: [start, end] } }]
+        },
+        order: [['date', 'ASC']],
+        limit: 5,
+        include: [
+          {
+            model: Pet,
+            as: 'pet',
+            required: true,
+            where: { tenantId: tenantIdNumber },
+            include: [
+              {
+                model: Tutor,
+                as: 'tutor',
+                required: true,
+                where: { tenantId: tenantIdNumber }
+              }
+            ]
+          }
+        ]
+      })
+    ]);
+
+    return {
+      metrics: { totalPets, totalTutors, appointmentsTodayCount },
+      todayAppointments
+    };
   }
 }
 

@@ -4,6 +4,6 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { label: 'Dashboard', route: '/dashboard', iconName: 'layout-dashboard' },
   { label: 'Agendamentos', route: '/agenda', iconName: 'calendar' },
   { label: 'Pets', route: '/pets', iconName: 'dog' },
-  { label: 'Tutores', route: '/dashboard', iconName: 'users' },
-  { label: 'Configurações', route: '/dashboard', iconName: 'settings' }
+  { label: 'Tutores', route: '/tutors', iconName: 'users' },
+  { label: 'Configurações', route: '/settings', iconName: 'settings' }
 ];

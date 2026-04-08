@@ -2,7 +2,12 @@ import { Router } from 'express';
 import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticated';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import AppointmentController from './controllers/AppointmentController';
-import { createAppointmentSchema, listAppointmentsSchema, updateAppointmentStatusSchema } from './schemas/appointment.schema';
+import {
+  createAppointmentSchema,
+  listAppointmentsSchema,
+  updateAppointmentSchema,
+  updateAppointmentStatusSchema
+} from './schemas/appointment.schema';
 
 const appointmentsRoutes = Router();
 
@@ -59,6 +64,10 @@ appointmentsRoutes.post('/appointments', validateSchema(createAppointmentSchema)
  *       200: { description: Lista de agendamentos (inclui pet e tutor) }
  */
 appointmentsRoutes.get('/appointments', validateSchema(listAppointmentsSchema, 'query'), AppointmentController.index);
+
+appointmentsRoutes.put('/appointments/:id', validateSchema(updateAppointmentSchema), AppointmentController.update);
+
+appointmentsRoutes.delete('/appointments/:id', AppointmentController.remove);
 
 appointmentsRoutes.patch(
   '/appointments/:id/status',

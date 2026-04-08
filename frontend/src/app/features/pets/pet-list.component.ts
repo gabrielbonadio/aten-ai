@@ -1,10 +1,13 @@
 import { NgClass } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
 import type { Pet } from '../../core/models/pet.model';
 import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
+import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { PetService } from '../../core/services/pet.service';
+import { NotificationService } from '../../shared/notifications/notification.service';
 import { ThemeService } from '../../shared/theme/theme.service';
 import { PetCreateModalComponent } from './pet-create-modal.component';
 
@@ -16,18 +19,26 @@ import { PetCreateModalComponent } from './pet-create-modal.component';
 })
 export class PetListComponent implements OnInit {
   private readonly petService = inject(PetService);
+  private readonly router = inject(Router);
+  private readonly notifications = inject(NotificationService);
   readonly theme = inject(ThemeService);
+  readonly brand = inject(ClinicBrandingService);
 
   readonly sidebarCollapsed = signal(false);
   readonly navItems = APP_SIDEBAR_NAV;
-
-  readonly clinicName = signal('Clínica Vet');
-  readonly planLabel = signal('Clínica Vet v1.0');
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly pets = signal<Pet[]>([]);
   readonly loading = signal(true);
   readonly petModalOpen = signal(false);
+
+  readonly editingPetId = signal<string | null>(null);
+  readonly editingPet = signal<Pet | null>(null);
+
+  readonly petToDelete = signal<{ id: string; name: string } | null>(null);
+
+  @ViewChild(PetCreateModalComponent)
+  private readonly petModal?: PetCreateModalComponent;
 
   ngOnInit(): void {
     this.loadPets();
@@ -35,6 +46,8 @@ export class PetListComponent implements OnInit {
 
   private loadPets(): void {
     this.loading.set(true);
+    // Garante refresh real mesmo com cache no service.
+    this.petService.invalidateCache();
     this.petService.findAll().subscribe((list) => {
       this.pets.set(list);
       this.loading.set(false);
@@ -42,14 +55,22 @@ export class PetListComponent implements OnInit {
   }
 
   openPetModal(): void {
+    this.editingPetId.set(null);
+    this.editingPet.set(null);
     this.petModalOpen.set(true);
+    this.petModal?.openForCreate();
   }
 
   onPetModalDismissed(): void {
     this.petModalOpen.set(false);
+    this.editingPetId.set(null);
+    this.editingPet.set(null);
   }
 
   onPetCreated(): void {
+    this.petModalOpen.set(false);
+    this.editingPetId.set(null);
+    this.editingPet.set(null);
     this.loadPets();
   }
 
@@ -79,11 +100,37 @@ export class PetListComponent implements OnInit {
     return pet.tutor?.name?.trim() || '—';
   }
 
+  viewProfile(pet: Pet): void {
+    void this.router.navigate(['/pets', pet.id]);
+  }
+
   editPet(pet: Pet): void {
-    void pet;
+    this.editingPetId.set(pet.id);
+    this.editingPet.set(pet);
+    this.petModalOpen.set(true);
+    this.petModal?.openForEdit(pet);
   }
 
   deletePet(pet: Pet): void {
-    void pet;
+    this.petToDelete.set({ id: pet.id, name: pet.name ?? '—' });
+  }
+
+  cancelDeletePet(): void {
+    this.petToDelete.set(null);
+  }
+
+  confirmDeletePet(): void {
+    const d = this.petToDelete();
+    if (!d?.id) return;
+    this.petService.remove(d.id).subscribe({
+      next: () => {
+        this.notifications.success('Pet excluído com sucesso.');
+        this.petToDelete.set(null);
+        this.loadPets();
+      },
+      error: () => {
+        this.notifications.error('Não foi possível excluir o pet.');
+      }
+    });
   }
 }

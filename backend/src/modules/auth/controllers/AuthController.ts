@@ -1,5 +1,7 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import { AppError } from '../../../shared/errors/AppError';
 import authService from '../services/AuthService';
+import userRepository from '../repositories/UserRepository';
 
 class AuthController {
   async signUp(req: Request, res: Response): Promise<void> {
@@ -24,9 +26,29 @@ class AuthController {
     res.status(204).send();
   }
 
-  /** Exemplo de rota protegida: expõe o tenant injetado pelo middleware JWT. */
-  async me(req: Request, res: Response): Promise<void> {
-    res.status(200).json({ user: req.user });
+  /** Dados do usuário autenticado (nome, e-mail, papel) para o portal. */
+  async me(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.user?.id;
+      if (!id) {
+        throw new AppError('Usuário não autenticado.', 401);
+      }
+      const row = await userRepository.findById(id);
+      if (!row) {
+        throw new AppError('Usuário não encontrado.', 404);
+      }
+      res.status(200).json({
+        user: {
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          role: row.role,
+          tenantId: row.tenantId
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 }
 

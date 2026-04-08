@@ -17,11 +17,16 @@ export interface Appointment {
   tutor?: Pick<PetTutorSummary, 'id' | 'name'> | null;
 }
 
+/** Status persistido na API (inglês). */
+export type AppointmentStatusCode = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
+
 /** Corpo do POST /appointments — tenant vem do token no back-end */
 export interface CreateAppointmentPayload {
   petId: string;
   /** ISO string */
   date: string;
   type: AppointmentType;
+  /** Opcional; padrão na API é SCHEDULED. */
+  status?: AppointmentStatusCode;
 }
 

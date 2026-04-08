@@ -1,5 +1,16 @@
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+
+/** Usuário retornado por GET /auth/me. */
+export interface CurrentUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  tenantId: number;
+}
 
 /** Chave principal (comum em tutoriais); mantemos compatibilidade com a chave antiga. */
 const STORAGE_KEY_PRIMARY = 'token';
@@ -7,6 +18,17 @@ const STORAGE_KEY_LEGACY = 'aten-ai.access_token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
+
+  private apiBase(): string {
+    return environment.apiUrl.replace(/\/$/, '');
+  }
+
+  /** Dados do profissional logado (nome para receituário, etc.). */
+  getMe(): Observable<{ user: CurrentUser }> {
+    return this.http.get<{ user: CurrentUser }>(`${this.apiBase()}/auth/me`);
+  }
+
   /** Token atual (localStorage ou fallback de dev em environment). */
   getToken(): string | null {
     try {

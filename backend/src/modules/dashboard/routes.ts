@@ -58,5 +58,7 @@ const dashboardRoutes = Router();
  */
 dashboardRoutes.get('/dashboard', ensureAuthenticated, ensureRole(['ADMIN']), DashboardController.show);
 
+dashboardRoutes.get('/dashboard/metrics', ensureAuthenticated, DashboardController.metrics);
+
 export default dashboardRoutes;
 

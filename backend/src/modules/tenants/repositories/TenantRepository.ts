@@ -39,6 +39,23 @@ class TenantRepository {
       { transaction: options?.transaction }
     );
   }
+
+  async updateById(
+    id: number,
+    data: Partial<{
+      name: string;
+      document: string | null;
+      phone: string | null;
+      address: string | null;
+      email: string | null;
+    }>,
+    options?: { transaction?: Transaction }
+  ): Promise<Tenant | null> {
+    const tenant = await Tenant.findByPk(id, { transaction: options?.transaction });
+    if (!tenant) return null;
+    await tenant.update(data, { transaction: options?.transaction });
+    return tenant.reload({ transaction: options?.transaction });
+  }
 }
 
 export default new TenantRepository();

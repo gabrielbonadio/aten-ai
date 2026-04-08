@@ -1,0 +1,112 @@
+@if (open()) {
+  <div
+    class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/50 p-4 backdrop-blur-[2px] sm:items-center"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tutor-modal-title"
+  >
+    <div
+      class="max-h-[min(92vh,720px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white shadow-xl shadow-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-start justify-between gap-4 border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <div>
+          <h2 id="tutor-modal-title" class="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            {{ editingId() ? 'Editar tutor' : 'Novo tutor' }}
+          </h2>
+          <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Dados de contato do responsável pelos pets.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          (click)="close()"
+          aria-label="Fechar"
+        >
+          <lucide-icon name="x" class="h-4 w-4"></lucide-icon>
+        </button>
+      </div>
+
+      <form class="space-y-5 px-6 py-5" [formGroup]="form" (ngSubmit)="submit()">
+        <div>
+          <label for="tutor-name" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            >Nome completo</label
+          >
+          <input
+            id="tutor-name"
+            type="text"
+            formControlName="name"
+            autocomplete="name"
+            class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            placeholder="Ex.: Maria Silva"
+          />
+          @if (showFieldError('name')) {
+            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Informe o nome.</p>
+          }
+        </div>
+
+        <div>
+          <label for="tutor-email" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            >E-mail</label
+          >
+          <input
+            id="tutor-email"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            placeholder="Opcional"
+          />
+        </div>
+
+        <div>
+          <label for="tutor-phone" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            >Telefone</label
+          >
+          <input
+            id="tutor-phone"
+            type="tel"
+            formControlName="phone"
+            autocomplete="tel"
+            class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            placeholder="Ex.: (11) 99999-9999"
+          />
+          @if (showFieldError('phone')) {
+            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Informe um telefone válido (mín. 6 caracteres).</p>
+          }
+        </div>
+
+        <div>
+          <label for="tutor-address" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            >Endereço</label
+          >
+          <textarea
+            id="tutor-address"
+            formControlName="address"
+            rows="2"
+            class="w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            placeholder="Opcional — rua, número, bairro"
+          ></textarea>
+        </div>
+
+        <div class="flex flex-col-reverse gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            (click)="close()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-60"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? 'Salvando…' : editingId() ? 'Salvar alterações' : 'Cadastrar tutor' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

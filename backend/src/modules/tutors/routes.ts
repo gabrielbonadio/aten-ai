@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticated';
-import { ensureRole } from '../../shared/middlewares/ensureRole';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import TutorController from './controllers/TutorController';
-import { createTutorSchema, updateTutorSchema } from './schemas/tutor.schema';
+import { createTutorSchema, listTutorsQuerySchema, updateTutorSchema } from './schemas/tutor.schema';
 
 const tutorsRoutes = Router();
 
@@ -35,23 +34,33 @@ tutorsRoutes.use(ensureAuthenticated);
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  */
-tutorsRoutes.post('/tutors', validateSchema(createTutorSchema), TutorController.store);
+tutorsRoutes.post('/tutors', validateSchema(createTutorSchema), TutorController.create);
 
 /**
  * @openapi
  * /tutors:
  *   get:
  *     tags: [Tutors]
- *     summary: Listar tutores (inclui pets)
+ *     summary: Listar tutores (inclui pets). Busca opcional por nome ou e-mail (?search= ou ?q=)
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: q
+ *         schema: { type: string }
  *     responses:
  *       200: { description: Lista de tutores }
  */
-tutorsRoutes.get('/tutors', TutorController.index);
+tutorsRoutes.get(
+  '/tutors',
+  validateSchema(listTutorsQuerySchema, 'query'),
+  TutorController.findAll
+);
 
-tutorsRoutes.get('/tutors/:id', TutorController.show);
+tutorsRoutes.get('/tutors/:id', TutorController.findOne);
 tutorsRoutes.put('/tutors/:id', validateSchema(updateTutorSchema), TutorController.update);
-tutorsRoutes.delete('/tutors/:id', ensureRole(['ADMIN']), TutorController.destroy);
+tutorsRoutes.delete('/tutors/:id', TutorController.remove);
 
 export default tutorsRoutes;
-

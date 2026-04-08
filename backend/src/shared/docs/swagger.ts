@@ -36,7 +36,8 @@ const options: swaggerJSDoc.Options = {
     path.join(process.cwd(), 'src/modules/pets/routes.ts'),
     path.join(process.cwd(), 'src/modules/appointments/routes.ts'),
     path.join(process.cwd(), 'src/modules/medical-records/routes.ts'),
-    path.join(process.cwd(), 'src/modules/dashboard/routes.ts')
+    path.join(process.cwd(), 'src/modules/dashboard/routes.ts'),
+    path.join(process.cwd(), 'src/modules/settings/routes.ts')
   ]
 };
 

@@ -4,6 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
 import type { Appointment } from '../../core/models/appointment.model';
 import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
+import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { AppointmentService } from '../../core/services/appointment.service';
 import { ThemeService } from '../../shared/theme/theme.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
@@ -33,12 +34,10 @@ export class AgendaComponent implements OnInit {
   private readonly appointmentService = inject(AppointmentService);
   private readonly notifications = inject(NotificationService);
   readonly theme = inject(ThemeService);
+  readonly brand = inject(ClinicBrandingService);
 
   readonly sidebarCollapsed = signal(false);
   readonly navItems = APP_SIDEBAR_NAV;
-
-  readonly clinicName = signal('Clínica Vet');
-  readonly planLabel = signal('Clínica Vet v1.0');
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 

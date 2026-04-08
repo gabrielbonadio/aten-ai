@@ -1,0 +1,229 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, HostListener, inject, input, output, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { LucideAngularModule } from 'lucide-angular';
+import { catchError, map, of, switchMap } from 'rxjs';
+import { AppointmentService } from '../../core/services/appointment.service';
+import { MedicalRecordService } from '../../core/services/medical-record.service';
+import { NotificationService } from '../../shared/notifications/notification.service';
+
+@Component({
+  selector: 'app-pet-consult-modal',
+  standalone: true,
+  imports: [ReactiveFormsModule, LucideAngularModule],
+  templateUrl: './pet-consult-modal.component.html'
+})
+export class PetConsultModalComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly medicalRecordService = inject(MedicalRecordService);
+  private readonly appointmentService = inject(AppointmentService);
+  private readonly notifications = inject(NotificationService);
+
+  readonly open = input(false);
+  readonly petId = input.required<string>();
+  readonly dismissed = output<void>();
+  readonly saved = output<void>();
+
+  readonly submitting = signal(false);
+
+  readonly form = this.fb.nonNullable.group({
+    symptoms: ['', [Validators.required, Validators.maxLength(8000)]],
+    diagnosis: ['', [Validators.required, Validators.maxLength(8000)]],
+    prescription: [''],
+    weight: this.fb.control<number | null>(null),
+    scheduleReturn: [false],
+    returnDate: ['']
+  });
+
+  closeModal(): void {
+    if (this.submitting()) return;
+    this.form.reset({
+      symptoms: '',
+      diagnosis: '',
+      prescription: '',
+      weight: null,
+      scheduleReturn: false,
+      returnDate: ''
+    });
+    this.syncReturnValidators();
+    this.dismissed.emit();
+  }
+
+  /** Data mínima (hoje) para o campo de retorno — evita datas passadas acidentais. */
+  minReturnDateStr(): string {
+    return this.formatYmd(new Date());
+  }
+
+  onScheduleReturnChange(): void {
+    const checked = this.form.controls.scheduleReturn.value;
+    if (checked && !this.form.controls.returnDate.value?.trim()) {
+      this.form.patchValue({ returnDate: this.defaultReturnDateStr() });
+    }
+    this.syncReturnValidators();
+  }
+
+  private syncReturnValidators(): void {
+    const ctrl = this.form.controls.returnDate;
+    if (this.form.controls.scheduleReturn.value) {
+      ctrl.setValidators([Validators.required]);
+    } else {
+      ctrl.clearValidators();
+    }
+    ctrl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private defaultReturnDateStr(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 15);
+    return this.formatYmd(d);
+  }
+
+  private formatYmd(d: Date): string {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  /** Converte yyyy-mm-dd para ISO UTC (09:00 horário local). */
+  private dateYmdToIso(dateYmd: string): string | null {
+    const parts = dateYmd.trim().split('-');
+    if (parts.length !== 3) return null;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(day)) return null;
+    const dt = new Date(y, m - 1, day, 9, 0, 0, 0);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt.toISOString();
+  }
+
+  private extractAppointmentMessage(err: unknown): string {
+    const fallback = 'Prontuário salvo, mas o retorno não pôde ser agendado. Tente pela agenda.';
+    if (!(err instanceof HttpErrorResponse)) return fallback;
+    const body = err.error;
+    if (body && typeof body === 'object' && 'message' in body) {
+      const msg = (body as { message: unknown }).message;
+      if (typeof msg === 'string' && msg.trim()) {
+        return `Prontuário salvo. Não foi possível agendar o retorno: ${msg.trim()}`;
+      }
+    }
+    return fallback;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (!this.open()) return;
+    this.closeModal();
+  }
+
+  showFieldError(name: string): boolean {
+    const c = this.form.get(name);
+    return !!c && c.invalid && (c.touched || c.dirty);
+  }
+
+  private extractApiMessage(err: unknown): string {
+    const fallback = 'Não foi possível registrar o atendimento.';
+    if (!(err instanceof HttpErrorResponse)) return fallback;
+    const body = err.error;
+    if (body && typeof body === 'object' && 'message' in body) {
+      const m = (body as { message: unknown }).message;
+      if (typeof m === 'string' && m.trim()) return m;
+    }
+    if (typeof body === 'string' && body.trim()) {
+      if (/<(html|!doctype)/i.test(body)) return 'Erro ao conectar com o servidor.';
+      return body;
+    }
+    return fallback;
+  }
+
+  submit(): void {
+    if (this.submitting()) return;
+    this.syncReturnValidators();
+    this.form.markAllAsTouched();
+    if (this.form.invalid) {
+      if (this.form.controls.scheduleReturn.value && this.form.controls.returnDate.invalid) {
+        this.notifications.warning('Informe a data do retorno.');
+      } else {
+        this.notifications.warning('Preencha sintomas e diagnóstico.');
+      }
+      return;
+    }
+
+    const v = this.form.getRawValue();
+    let w: number | null = null;
+    if (v.weight != null && v.weight !== ('' as unknown)) {
+      const n = Number(v.weight);
+      if (Number.isFinite(n)) {
+        if (n < 0.01 || n > 999.99) {
+          this.notifications.warning('Peso deve estar entre 0,01 e 999,99 kg.');
+          return;
+        }
+        w = n;
+      }
+    }
+    const scheduleReturn = v.scheduleReturn;
+    const returnDateRaw = (v.returnDate ?? '').trim();
+    if (scheduleReturn) {
+      if (!returnDateRaw) {
+        this.notifications.warning('Informe a data do retorno.');
+        return;
+      }
+      if (!this.dateYmdToIso(returnDateRaw)) {
+        this.notifications.warning('Data de retorno inválida.');
+        return;
+      }
+    }
+
+    this.submitting.set(true);
+    const petId = this.petId();
+    const returnIso = returnDateRaw ? this.dateYmdToIso(returnDateRaw)! : '';
+
+    this.medicalRecordService
+      .create({
+        petId,
+        symptoms: v.symptoms.trim(),
+        diagnosis: v.diagnosis.trim(),
+        prescription: v.prescription?.trim() ? v.prescription.trim() : null,
+        weight: w
+      })
+      .pipe(
+        switchMap(() => {
+          if (!scheduleReturn) {
+            return of({ outcome: 'record' as const });
+          }
+          return this.appointmentService
+            .create({
+              petId,
+              date: returnIso,
+              type: 'CONSULTATION',
+              status: 'SCHEDULED'
+            })
+            .pipe(
+              map(() => ({ outcome: 'both' as const })),
+              catchError((err: unknown) =>
+                of({ outcome: 'partial' as const, appointmentError: err })
+              )
+            );
+        })
+      )
+      .subscribe({
+        next: (r) => {
+          this.submitting.set(false);
+          if (r.outcome === 'both') {
+            this.notifications.success('Prontuário salvo e retorno agendado com sucesso!');
+          } else if (r.outcome === 'record') {
+            this.notifications.success('Atendimento registrado no prontuário.');
+          } else {
+            this.notifications.warning(this.extractAppointmentMessage(r.appointmentError));
+          }
+          this.saved.emit();
+          this.closeModal();
+        },
+        error: (err: unknown) => {
+          this.submitting.set(false);
+          this.notifications.error(this.extractApiMessage(err));
+        }
+      });
+  }
+}

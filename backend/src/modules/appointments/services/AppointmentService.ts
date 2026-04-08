@@ -21,6 +21,8 @@ export type ListAppointmentsFilters = {
   endDate?: Date;
 };
 
+export type UpdateAppointmentInput = Partial<CreateAppointmentInput>;
+
 class AppointmentService {
   constructor(private readonly webhookProvider: IWebhookProvider = new N8nWebhookProvider()) {}
 
@@ -123,6 +125,35 @@ class AppointmentService {
 
     await appointment.update({ status });
     return appointment;
+  }
+
+  async update(id: string, tenantId: number, data: UpdateAppointmentInput): Promise<Appointment> {
+    const appointment = await Appointment.findOne({ where: { [Op.and]: [{ id }, { tenantId }] } });
+    if (!appointment) throw new NotFoundError('Agendamento não encontrado.');
+
+    if (data.petId) {
+      const pet = await Pet.findOne({ where: { [Op.and]: [{ id: data.petId }, { tenantId }] } });
+      if (!pet) throw new NotFoundError('Pet não encontrado.');
+      await appointment.update({ petId: data.petId });
+    }
+
+    const patch: Partial<Pick<CreateAppointmentInput, 'date' | 'type' | 'status' | 'notes'>> = {};
+    if (data.date) patch.date = data.date;
+    if (data.type) patch.type = data.type;
+    if (data.status) patch.status = data.status;
+    if (data.notes !== undefined) patch.notes = data.notes?.trim() || null;
+
+    if (Object.keys(patch).length > 0) {
+      await appointment.update(patch);
+    }
+
+    return appointment;
+  }
+
+  async remove(id: string, tenantId: number): Promise<void> {
+    const appointment = await Appointment.findOne({ where: { [Op.and]: [{ id }, { tenantId }] } });
+    if (!appointment) throw new NotFoundError('Agendamento não encontrado.');
+    await appointment.destroy();
   }
 }
 

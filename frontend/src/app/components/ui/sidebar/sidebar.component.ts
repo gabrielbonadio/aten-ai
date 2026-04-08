@@ -1,7 +1,8 @@
 import { NgClass } from '@angular/common';
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { ClinicBrandingService } from '../../../core/services/clinic-branding.service';
 
 export type SidebarNavItem = {
   label: string;
@@ -39,7 +40,8 @@ export type SidebarNavItem = {
             @if (!collapsed()) {
               <div class="min-w-0">
                 <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">Aten-AI</div>
-                <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">Clínica Vet v1.0</div>
+                <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ brand.clinicName() }}</div>
+                <div class="truncate text-[11px] text-zinc-400 dark:text-zinc-500">{{ brand.planLabel() }}</div>
               </div>
             }
           </div>
@@ -94,6 +96,7 @@ export type SidebarNavItem = {
   `
 })
 export class SidebarComponent {
+  readonly brand = inject(ClinicBrandingService);
   readonly collapsed = input.required<boolean>();
   readonly items = input.required<SidebarNavItem[]>();
   readonly toggle = output<void>();
