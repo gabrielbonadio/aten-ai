@@ -1,0 +1,170 @@
+@if (open()) {
+  <div
+    class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/50 p-4 backdrop-blur-[2px] sm:items-center"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="pet-modal-title"
+  >
+    <div
+      class="max-h-[min(92vh,720px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white shadow-xl shadow-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-start justify-between gap-4 border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <div>
+          <h2 id="pet-modal-title" class="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Novo pet</h2>
+          <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Preencha os dados do paciente e vincule ao tutor.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          (click)="close()"
+          aria-label="Fechar"
+        >
+          <lucide-icon name="x" class="h-4 w-4"></lucide-icon>
+        </button>
+      </div>
+
+      <form class="space-y-5 px-6 py-5" [formGroup]="form" (ngSubmit)="submit()">
+        <div>
+          <label for="pet-name" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Nome</label>
+          <input
+            id="pet-name"
+            type="text"
+            formControlName="name"
+            autocomplete="off"
+            class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-emerald-400"
+            placeholder="Ex.: Thor"
+          />
+          @if (showFieldError('name')) {
+            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Informe o nome do pet.</p>
+          }
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label for="pet-species" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+              >Espécie</label
+            >
+            <select
+              id="pet-species"
+              formControlName="species"
+              class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            >
+              <option value="" disabled>Selecione…</option>
+              @for (opt of speciesOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+            @if (showFieldError('species')) {
+              <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Selecione a espécie.</p>
+            }
+          </div>
+          <div>
+            <label for="pet-breed" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Raça</label>
+            <input
+              id="pet-breed"
+              type="text"
+              formControlName="breed"
+              class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              placeholder="Opcional"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label for="pet-birth" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+              >Data de nascimento</label
+            >
+            <input
+              id="pet-birth"
+              type="date"
+              formControlName="birthDate"
+              class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            />
+          </div>
+          <div>
+            <label for="pet-weight" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Peso (kg)</label>
+            <input
+              id="pet-weight"
+              type="number"
+              formControlName="weight"
+              step="0.01"
+              min="0.01"
+              inputmode="decimal"
+              class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              placeholder="Ex.: 4,5"
+            />
+            @if (showFieldError('weight')) {
+              <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Informe um peso maior que zero.</p>
+            }
+          </div>
+        </div>
+
+        <div>
+          <label for="tutor-search" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">
+            Tutor <span class="text-red-500" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="tutor-search"
+            type="search"
+            [value]="tutorFilter()"
+            (input)="tutorFilter.set($any($event.target).value)"
+            class="mb-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            placeholder="Buscar por nome, telefone ou e-mail…"
+            autocomplete="off"
+          />
+          <select
+            id="pet-tutor"
+            formControlName="tutorId"
+            class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            [disabled]="tutorsLoading()"
+          >
+            <option value="">Selecione o tutor…</option>
+            @for (tutor of filteredTutors(); track tutor.id) {
+              <option [value]="tutor.id">{{ tutor.name }}</option>
+            }
+          </select>
+          @if (tutorsLoading()) {
+            <p class="mt-2 flex items-center gap-2 text-xs text-zinc-500">
+              <lucide-icon name="loader" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
+              Carregando tutores…
+            </p>
+          } @else if (tutors().length === 0) {
+            <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              Nenhum tutor cadastrado. Cadastre um tutor antes de vincular um pet.
+            </p>
+          }
+          @if (showFieldError('tutorId')) {
+            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Selecione o tutor responsável.</p>
+          }
+        </div>
+
+        <div class="flex flex-col-reverse gap-2 border-t border-zinc-100 pt-5 dark:border-zinc-800 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-400/40 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            (click)="close()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="inline-flex min-w-[8.5rem] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+            [disabled]="submitting()"
+            [attr.aria-busy]="submitting()"
+          >
+            @if (submitting()) {
+              <lucide-icon name="loader" class="h-4 w-4 shrink-0 animate-spin" aria-hidden="true"></lucide-icon>
+              <span>Carregando…</span>
+            } @else {
+              <span>Salvar pet</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
