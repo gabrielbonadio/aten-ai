@@ -111,4 +111,26 @@ describe('authInterceptor', () => {
     expect(authService.logout).not.toHaveBeenCalled();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
+
+  it('não faz logout automático em 401 do endpoint de signup', () => {
+    http
+      .post(`${apiBase}/auth/signup`, {
+        tenantName: 'Clinica',
+        userName: 'Admin',
+        email: 'a@b.com',
+        password: '12345678'
+      })
+      .subscribe({
+        next: () => fail('deveria falhar com 401'),
+        error: (err) => {
+          expect(err.status).toBe(401);
+        }
+      });
+
+    const req = httpMock.expectOne(`${apiBase}/auth/signup`);
+    req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(authService.logout).not.toHaveBeenCalled();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
 });

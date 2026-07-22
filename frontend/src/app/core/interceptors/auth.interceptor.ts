@@ -15,7 +15,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const base = environment.apiUrl.replace(/\/$/, '');
   const isApi = req.url.startsWith(base);
-  const isAuthLogin = req.url.startsWith(`${base}/auth/login`);
+  const isAuthPublic =
+    req.url.startsWith(`${base}/auth/login`) || req.url.startsWith(`${base}/auth/signup`);
 
   const reqWithAuth =
     token && isApi
@@ -28,7 +29,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(reqWithAuth).pipe(
     catchError((err: unknown) => {
-      if (isApi && !isAuthLogin && err instanceof HttpErrorResponse && err.status === 401) {
+      if (isApi && !isAuthPublic && err instanceof HttpErrorResponse && err.status === 401) {
         auth.logout();
         void router.navigateByUrl('/login');
       }

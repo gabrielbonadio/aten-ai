@@ -16,6 +16,23 @@ export interface CurrentUser {
 export interface AuthResponse {
   token: string;
   user: CurrentUser;
+  tenant?: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+}
+
+export interface SignUpPayload {
+  tenantName: string;
+  userName: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
 }
 
 /** Chave principal (comum em tutoriais); mantemos compatibilidade com a chave antiga. */
@@ -35,8 +52,19 @@ export class AuthService {
     return environment.apiUrl.replace(/\/$/, '');
   }
 
+  /** Cadastro multi-tenant: cria clínica + admin e salva a sessão. */
+  signUp(payload: SignUpPayload): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiBase()}/auth/signup`, payload).pipe(
+      tap((response) => {
+        this.setToken(response.token);
+        this.setUserData(response.user);
+        this.loggedIn.next(true);
+      })
+    );
+  }
+
   /** Realiza o login e salva os dados na sessão. */
-  login(credentials: any): Observable<AuthResponse> {
+  login(credentials: LoginPayload): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiBase()}/auth/login`, credentials).pipe(
       tap((response) => {
         this.setToken(response.token);

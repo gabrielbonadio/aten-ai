@@ -6,12 +6,12 @@ import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-signup',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './login.component.html'
+  templateUrl: './signup.component.html'
 })
-export class LoginComponent {
+export class SignupComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -20,8 +20,10 @@ export class LoginComponent {
   errorMessage: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
+    tenantName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(255)]],
+    userName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(255)]],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]]
+    password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128)]]
   });
 
   submit(): void {
@@ -33,24 +35,23 @@ export class LoginComponent {
     }
 
     this.loading = true;
-    const { email, password } = this.form.getRawValue();
+    const { tenantName, userName, email, password } = this.form.getRawValue();
 
     this.authService
-      .login({ email, password })
+      .signUp({ tenantName, userName, email, password })
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: () => {
           void this.router.navigateByUrl('/dashboard');
         },
-        error: (err: any) => {
-          // Para login inválido (401), queremos ficar na tela e mostrar feedback.
+        error: (err: unknown) => {
+          const httpErr = err as { error?: { message?: string }; message?: string };
           const msg =
-            err?.error?.message ??
-            err?.message ??
-            'Não foi possível entrar. Verifique seu e-mail e senha e tente novamente.';
+            httpErr?.error?.message ??
+            httpErr?.message ??
+            'Não foi possível criar a conta. Tente novamente.';
           this.errorMessage = String(msg);
         }
       });
   }
 }
-
