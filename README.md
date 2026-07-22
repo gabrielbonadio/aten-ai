@@ -247,6 +247,8 @@ Para apontar a API sem `.env`, edite `src/environments/environment.ts` (`apiUrl`
 
 ## Testes
 
+### Backend
+
 Os testes do backend **não dependem** de MySQL nem de n8n/Resend. Sequelize e serviços externos são mockados.
 
 ```bash
@@ -261,6 +263,24 @@ Cobertura atual (crítica):
 - Login (válido / senha errada / usuário inexistente)
 - Isolamento multi-tenant (pets entre tenants)
 - Criação de agendamento + disparo de webhook
+- Conversas / lembretes WhatsApp
+
+### Frontend
+
+```bash
+cd frontend
+npm test                 # Karma (watch)
+npm run test:ci          # ChromeHeadlessCI, single run (igual ao GitHub Actions)
+```
+
+Cobertura atual: AuthGuard, HTTP interceptor, Login, Signup, Forgot/Reset password.
+
+### CI
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em push/PR para `main`:
+
+1. Backend: `tsc --noEmit` + Jest  
+2. Frontend: `npm run test:ci` + build de produção  
 
 ---
 
@@ -330,6 +350,7 @@ npm test             # Jest
 npm start            # ng serve (porta 4200)
 npm run build        # build de produção
 npm run sync:env     # gera environment.ts a partir do .env
+npm run test:ci      # testes headless (CI)
 
 # Raiz
 docker compose up --build
