@@ -116,7 +116,7 @@ Jobs in-process (lembretes D-1, follow-up, GC de conversas) usam **claim-first**
 ```
 aten-ai/
 ├── backend/                 # API Node.js + Express + Sequelize
-│   ├── src/modules/         # auth, pets, tutors, appointments, ...
+│   ├── src/modules/         # módulos ativos (ver lista abaixo)
 │   ├── src/__tests__/       # unit + integration (Jest)
 │   ├── migrations/          # Sequelize CLI
 │   ├── Dockerfile
@@ -126,10 +126,18 @@ aten-ai/
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── .env.example
+├── .github/workflows/       # CI (tsc + jest + build)
+├── docs/                    # n8n contracts + pitch
 ├── docker-compose.yml
 ├── .env.example             # variáveis do Compose
 └── README.md
 ```
+
+**Módulos ativos do backend** (`backend/src/modules/`):
+
+`auth` · `tenants` · `tutors` · `pets` · `appointments` · `medical-records` · `dashboard` · `settings` · `conversations`
+
+Pastas legadas vazias (`customers`, `clients`, `agent`, `whatsapp`) foram removidas do filesystem. A tabela MySQL `customers` (se existir em bancos antigos) pode ser dropada numa migration futura.
 
 ---
 
