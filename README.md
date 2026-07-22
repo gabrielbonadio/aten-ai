@@ -20,6 +20,7 @@ Cada clínica (tenant) gerencia tutores, pets, agendamentos e prontuários com i
 - [Segurança multi-tenant](#segurança-multi-tenant)
 - [Variáveis de ambiente](#variáveis-de-ambiente)
 - Contratos n8n: [`docs/n8n-webhooks.md`](docs/n8n-webhooks.md)
+- Deploy demo: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
 ---
 
@@ -290,7 +291,8 @@ Authorization: Bearer <N8N_WEBHOOK_SECRET>
 ```
 
 Contratos completos de payload (outbound + inbound): [`docs/n8n-webhooks.md`](docs/n8n-webhooks.md).  
-Texto de pitch para portfólio/entrevista: [`docs/PORTFOLIO-PITCH.md`](docs/PORTFOLIO-PITCH.md).
+Texto de pitch para portfólio/entrevista: [`docs/PORTFOLIO-PITCH.md`](docs/PORTFOLIO-PITCH.md).  
+Guia de deploy demo (Render/Vercel): [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ---
 

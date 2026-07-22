@@ -18,8 +18,19 @@ class App {
   private middlewares(): void {
     // Helmet para segurança básica de cabeçalhos HTTP
     this.express.use(helmet());
-    // Cors para permitir requisições do nosso futuro painel Angular
-    this.express.use(cors());
+
+    // Em produção, restrinja CORS à URL do portal (FRONTEND_URL).
+    // Em dev sem FRONTEND_URL, mantém o comportamento permissivo do cors().
+    const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/$/, '');
+    this.express.use(
+      frontendUrl
+        ? cors({
+            origin: [frontendUrl, /^http:\/\/localhost:\d+$/],
+            credentials: true
+          })
+        : cors()
+    );
+
     // Parsear o corpo das requisições para JSON
     this.express.use(express.json());
     this.express.use(express.urlencoded({ extended: true }));
