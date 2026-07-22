@@ -74,24 +74,42 @@ Cada clínica (tenant) gerencia tutores, pets, agendamentos e prontuários com i
 
 ## Arquitetura
 
+```mermaid
+flowchart LR
+  subgraph Client
+    A[Angular 17 Portal]
+  end
+
+  subgraph API
+    B[Express API<br/>JWT multi-tenant]
+    J[Jobs in-process<br/>reminders / follow-up / GC]
+  end
+
+  subgraph Data
+    C[(MySQL 8)]
+  end
+
+  subgraph Automation
+    N[n8n]
+    W[WhatsApp]
+  end
+
+  A -->|Bearer JWT| B
+  B --> C
+  J --> C
+  B -->|webhook outbound<br/>Bearer secret| N
+  J -->|webhook outbound| N
+  N --> W
+  W -->|resposta do tutor| N
+  N -->|POST /api/v1/conversations/reply<br/>Bearer secret| B
 ```
-┌─────────────┐     JWT      ┌──────────────────┐     SQL      ┌─────────┐
-│  Angular    │─────────────▶│  Express API     │─────────────▶│ MySQL 8 │
-│  (Nginx)    │◀─────────────│  (multi-tenant)  │◀─────────────│         │
-└─────────────┘              └────────┬─────────┘              └─────────┘
-                                      │
-                         webhooks     │  Authorization: Bearer <secret>
-                         (outbound)   ▼
-                               ┌────────────┐
-                               │    n8n     │──▶ WhatsApp
-                               └─────┬──────┘
-                                     │ POST /api/v1/conversations/reply
-                                     │ (inbound, shared secret)
-                                     ▼
-                               ┌────────────┐
-                               │  Express   │
-                               └────────────┘
-```
+
+Fluxo resumido:
+
+1. O portal autentica e chama a API com `Authorization: Bearer <jwt>` (`tenantId` no token).  
+2. A API persiste dados isolados por tenant no MySQL.  
+3. Jobs e serviços disparam eventos para o n8n (lembrete, follow-up, prontuário).  
+4. O n8n envia WhatsApp; a resposta do tutor volta em `POST /api/v1/conversations/reply` com shared secret.
 
 **Backend — camadas por módulo**
 
@@ -104,7 +122,7 @@ routes → controller → service → repository / model
 ```
 core/        # services, guards, interceptors, models
 features/    # domínio (pets, agenda, tutors, settings)
-pages/       # dashboard, login
+pages/       # dashboard, login, signup, forgot/reset password
 shared/      # UI compartilhada
 ```
 
@@ -138,7 +156,8 @@ aten-ai/
 
 `auth` · `tenants` · `tutors` · `pets` · `appointments` · `medical-records` · `dashboard` · `settings` · `conversations`
 
-Pastas legadas vazias (`customers`, `clients`, `agent`, `whatsapp`) foram removidas do filesystem. A tabela MySQL `customers` (se existir em bancos antigos) pode ser dropada numa migration futura.
+Pastas legadas vazias (`customers`, `clients`, `agent`, `whatsapp`) foram removidas do filesystem.
+A migration `20260722120000-drop-customers` remove a tabela MySQL `customers` em ambientes que ainda a tenham.
 
 ---
 

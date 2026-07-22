@@ -31,3 +31,14 @@ A mensagem chega ao tutor em segundos; se ele responder rápido e o estado ainda
 2. Mostrar Swagger / health  
 3. Explicar diagrama: reminder → n8n → WhatsApp → reply → confirmação  
 4. Abrir `docs/n8n-webhooks.md` e um teste de `ConversationReplyService`
+
+## Checklist antes de publicar / demo
+
+- [ ] `JWT_SECRET` e `N8N_WEBHOOK_SECRET` fortes (não usar defaults)
+- [ ] `FRONTEND_URL` apontando para a URL pública do portal (e-mails + CORS)
+- [ ] `API_URL` no build do frontend = URL pública da API (browser)
+- [ ] Migrations aplicadas (`npm run migrate` ou entrypoint Docker)
+- [ ] CI verde no `main` (backend Jest + frontend `test:ci` + build)
+- [ ] Fluxo smoke: signup → login → criar tutor/pet → agendamento
+- [ ] (Opcional) n8n com header `Authorization: Bearer <N8N_WEBHOOK_SECRET>` no inbound
+- [ ] Screenshots ou GIF no README (Prompt 6 / polish)
