@@ -1,0 +1,108 @@
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators
+} from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { AuthService } from '../../core/services/auth.service';
+
+/** Alinhado ao schema Joi do backend (reset-password). */
+const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
+function passwordsMatchValidator(group: AbstractControl): ValidationErrors | null {
+  const password = group.get('password')?.value;
+  const confirmPassword = group.get('confirmPassword')?.value;
+  if (!password || !confirmPassword) {
+    return null;
+  }
+  return password === confirmPassword ? null : { passwordsMismatch: true };
+}
+
+@Component({
+  selector: 'app-reset-password',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './reset-password.component.html'
+})
+export class ResetPasswordComponent implements OnInit {
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  loading = false;
+  errorMessage: string | null = null;
+  successMessage: string | null = null;
+  tokenMissing = false;
+  private resetToken = '';
+
+  readonly form = this.fb.nonNullable.group(
+    {
+      password: [
+        '',
+        [
+          Validators.required,
+          Validators.minLength(8),
+          Validators.maxLength(128),
+          Validators.pattern(STRONG_PASSWORD_PATTERN)
+        ]
+      ],
+      confirmPassword: ['', [Validators.required]]
+    },
+    { validators: passwordsMatchValidator }
+  );
+
+  ngOnInit(): void {
+    const token = this.route.snapshot.queryParamMap.get('token')?.trim() ?? '';
+    if (token.length < 32) {
+      this.tokenMissing = true;
+      this.errorMessage = 'Link inválido ou incompleto. Solicite uma nova recuperação de senha.';
+      return;
+    }
+    this.resetToken = token;
+  }
+
+  submit(): void {
+    this.errorMessage = null;
+    this.successMessage = null;
+
+    if (this.tokenMissing || !this.resetToken) {
+      this.errorMessage = 'Link inválido ou incompleto. Solicite uma nova recuperação de senha.';
+      return;
+    }
+
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.loading = true;
+    const { password } = this.form.getRawValue();
+
+    this.authService
+      .resetPassword(this.resetToken, password)
+      .pipe(finalize(() => (this.loading = false)))
+      .subscribe({
+        next: () => {
+          this.successMessage = 'Senha redefinida com sucesso. Você já pode entrar.';
+          this.form.reset();
+          setTimeout(() => {
+            void this.router.navigateByUrl('/login');
+          }, 1500);
+        },
+        error: (err: unknown) => {
+          const httpErr = err as { error?: { message?: string }; message?: string };
+          this.errorMessage = String(
+            httpErr?.error?.message ??
+              httpErr?.message ??
+              'Não foi possível redefinir a senha. O link pode ter expirado.'
+          );
+        }
+      });
+  }
+}

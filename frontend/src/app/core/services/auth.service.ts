@@ -74,6 +74,19 @@ export class AuthService {
     );
   }
 
+  /**
+   * Solicita e-mail de recuperação.
+   * O backend sempre responde sucesso (204) para não vazar se o e-mail existe.
+   */
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(`${this.apiBase()}/auth/forgot-password`, { email });
+  }
+
+  /** Redefine a senha com o token recebido por e-mail. */
+  resetPassword(token: string, password: string): Observable<void> {
+    return this.http.post<void>(`${this.apiBase()}/auth/reset-password`, { token, password });
+  }
+
   /** Desloga o usuário limpando o storage e o estado. */
   logout(): void {
     this.clearToken();

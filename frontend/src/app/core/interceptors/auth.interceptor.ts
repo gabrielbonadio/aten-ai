@@ -16,7 +16,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const base = environment.apiUrl.replace(/\/$/, '');
   const isApi = req.url.startsWith(base);
   const isAuthPublic =
-    req.url.startsWith(`${base}/auth/login`) || req.url.startsWith(`${base}/auth/signup`);
+    req.url.startsWith(`${base}/auth/login`) ||
+    req.url.startsWith(`${base}/auth/signup`) ||
+    req.url.startsWith(`${base}/auth/forgot-password`) ||
+    req.url.startsWith(`${base}/auth/reset-password`);
 
   const reqWithAuth =
     token && isApi
