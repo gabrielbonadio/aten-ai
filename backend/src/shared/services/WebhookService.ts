@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios';
+import { logger } from '../logging/logger';
 
 /**
  * Catálogo centralizado dos eventos despachados ao n8n.
@@ -50,7 +51,7 @@ export class WebhookService {
   private async send(eventName: N8nWebhookEvent, payload: N8nWebhookPayload): Promise<void> {
     const url = process.env.N8N_WEBHOOK_URL?.trim();
     if (!url) {
-      console.warn(`[WebhookService] N8N_WEBHOOK_URL não configurado. Evento "${eventName}" descartado.`);
+      logger.warn('webhook.skipped_missing_url', { event: eventName });
       return;
     }
 
@@ -59,15 +60,16 @@ export class WebhookService {
     if (secret) {
       headers.Authorization = `Bearer ${secret}`;
     } else {
-      console.warn(
-        `[WebhookService] N8N_WEBHOOK_SECRET não configurado. Evento "${eventName}" enviado sem Authorization.`
-      );
+      logger.warn('webhook.missing_secret', { event: eventName });
     }
 
     try {
       await this.http.post(url, { event: eventName, ...payload }, { headers });
     } catch (err) {
-      console.error(`[WebhookService] Falha ao despachar evento "${eventName}" ao n8n:`, err);
+      logger.error('webhook.dispatch_failed', {
+        event: eventName,
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
   }
 }

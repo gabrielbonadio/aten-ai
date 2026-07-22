@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './shared/docs/swagger';
+import { healthHandler } from './shared/health/healthHandler';
 import { errorHandler } from './shared/middlewares/errorHandler';
 import routes from './routes';
 
@@ -37,9 +38,8 @@ class App {
   }
 
   private routes(): void {
-    // Uma rota de teste (Health Check) só para sabermos que está tudo online
-    this.express.get('/health', (req, res) => {
-      res.status(200).json({ status: 'Aten AI Backend is running! 🚀' });
+    this.express.get('/health', (req, res, next) => {
+      void healthHandler(req, res).catch(next);
     });
 
     this.express.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

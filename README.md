@@ -308,7 +308,7 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em push/P
 Com a API no ar:
 
 - **Swagger UI:** http://localhost:3000/api-docs  
-- **Health check:** `GET /health`
+- **Health check:** `GET /health` (verifica MySQL; `200` ok / `503` degradado)  
 
 Rotas principais (autenticadas com `Authorization: Bearer <jwt>`):
 
