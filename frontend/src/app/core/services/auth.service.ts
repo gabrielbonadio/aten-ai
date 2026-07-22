@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { isJwtExpired } from '../utils/jwt.util';
 
-/** Usuário retornado por GET /auth/me. */
+/** Usuário retornado por GET /auth/me ou POST /auth/login. */
 export interface CurrentUser {
   id: string;
   name: string;
@@ -12,16 +13,43 @@ export interface CurrentUser {
   tenantId: number;
 }
 
+export interface AuthResponse {
+  token: string;
+  user: CurrentUser;
+}
+
 /** Chave principal (comum em tutoriais); mantemos compatibilidade com a chave antiga. */
 const STORAGE_KEY_PRIMARY = 'token';
 const STORAGE_KEY_LEGACY = 'aten-ai.access_token';
+const STORAGE_KEY_USER = 'user_data';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
 
+  // Estado reativo para avisar o Angular se o usuário está logado
+  private loggedIn = new BehaviorSubject<boolean>(this.isTokenValid());
+  isLoggedIn$ = this.loggedIn.asObservable();
+
   private apiBase(): string {
     return environment.apiUrl.replace(/\/$/, '');
+  }
+
+  /** Realiza o login e salva os dados na sessão. */
+  login(credentials: any): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiBase()}/auth/login`, credentials).pipe(
+      tap((response) => {
+        this.setToken(response.token);
+        this.setUserData(response.user);
+        this.loggedIn.next(true);
+      })
+    );
+  }
+
+  /** Desloga o usuário limpando o storage e o estado. */
+  logout(): void {
+    this.clearToken();
+    this.loggedIn.next(false);
   }
 
   /** Dados do profissional logado (nome para receituário, etc.). */
@@ -29,7 +57,7 @@ export class AuthService {
     return this.http.get<{ user: CurrentUser }>(`${this.apiBase()}/auth/me`);
   }
 
-  /** Token atual (localStorage ou fallback de dev em environment). */
+  /** Token atual persistido no localStorage após login. */
   getToken(): string | null {
     try {
       const primary = localStorage.getItem(STORAGE_KEY_PRIMARY);
@@ -42,10 +70,6 @@ export class AuthService {
       }
     } catch {
       // storage indisponível (ex.: modo privado restrito)
-    }
-
-    if (!environment.production && environment.devJwtToken?.trim()) {
-      return environment.devJwtToken.trim();
     }
 
     return null;
@@ -61,10 +85,19 @@ export class AuthService {
     }
   }
 
+  private setUserData(user: CurrentUser): void {
+    try {
+      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+    } catch {
+      // ignore
+    }
+  }
+
   clearToken(): void {
     try {
       localStorage.removeItem(STORAGE_KEY_PRIMARY);
       localStorage.removeItem(STORAGE_KEY_LEGACY);
+      localStorage.removeItem(STORAGE_KEY_USER);
     } catch {
       // ignore
     }
@@ -72,5 +105,15 @@ export class AuthService {
 
   hasToken(): boolean {
     return this.getToken() !== null;
+  }
+
+  /** Verifica presença do token e se o JWT ainda não expirou (sem validar assinatura). */
+  isTokenValid(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+
+    return !isJwtExpired(token);
   }
 }

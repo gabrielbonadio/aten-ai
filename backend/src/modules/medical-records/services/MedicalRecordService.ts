@@ -1,8 +1,7 @@
 import { Op } from 'sequelize';
 import { AppError, NotFoundError } from '../../../shared/errors/AppError';
-import type { IWebhookProvider } from '../../../shared/providers/WebhookProvider/IWebhookProvider';
-import { N8nWebhookProvider } from '../../../shared/providers/WebhookProvider/N8nWebhookProvider';
 import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
+import webhookService from '../../../shared/services/WebhookService';
 import Appointment from '../../appointments/models/Appointment';
 import Pet from '../../pets/models/Pet';
 import User from '../../auth/models/User';
@@ -22,8 +21,6 @@ export type CreateMedicalRecordInput = {
 export type UpdateMedicalRecordInput = Partial<Omit<CreateMedicalRecordInput, 'petId'>>;
 
 class MedicalRecordService {
-  constructor(private readonly webhookProvider: IWebhookProvider = new N8nWebhookProvider()) {}
-
   async create(data: CreateMedicalRecordInput, tenantId: number, veterinarianId: string): Promise<MedicalRecord> {
     const pet = await Pet.findOne({
       where: { [Op.and]: [{ id: data.petId }, { tenantId }] },
@@ -62,14 +59,12 @@ class MedicalRecordService {
     const tenant = await Tenant.findByPk(tenantId);
     const tutor = (pet as Pet & { tutor: Tutor }).tutor;
     if (tenant && tutor) {
-      void this.webhookProvider.dispatchMedicalRecordCreated({
-        idProntuario: record.id,
-        idTenant: String(tenantId),
-        nomePet: pet.name,
-        nomeTutor: tutor.name,
-        telefoneTutor: formatBrazilPhoneE164(tutor.phone),
-        prescricao: record.prescription,
-        nomeClinica: tenant.name
+      webhookService.dispatch('medical_record.created', {
+        clinic_name: tenant.name,
+        tutor_name: tutor.name,
+        tutor_phone: formatBrazilPhoneE164(tutor.phone),
+        pet_name: pet.name,
+        prescription: record.prescription
       });
     }
 

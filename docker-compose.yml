@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: aten-ai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-aten_ai_db}
+      MYSQL_USER: ${DB_USER:-aten_ai}
+      MYSQL_PASSWORD: ${DB_PASS:-aten_ai_pass}
+    ports:
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 25s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aten-ai-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-aten_ai}
+      DB_PASS: ${DB_PASS:-aten_ai_pass}
+      DB_NAME: ${DB_NAME:-aten_ai_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-use-a-long-random-string}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET:-change-me}
+      N8N_MEDICAL_RECORD_WEBHOOK_URL: ${N8N_MEDICAL_RECORD_WEBHOOK_URL:-}
+      N8N_MEDICAL_RECORD_WEBHOOK_API_KEY: ${N8N_MEDICAL_RECORD_WEBHOOK_API_KEY:-}
+    ports:
+      - "${BACKEND_HOST_PORT:-3000}:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_URL: ${API_URL:-http://localhost:3000}
+    container_name: aten-ai-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_HOST_PORT:-8080}:80"
+
+volumes:
+  mysql_data:

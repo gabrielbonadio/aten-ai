@@ -2,6 +2,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 
 export type AppointmentType = 'VACCINE' | 'CONSULTATION' | 'SURGERY' | 'OTHER';
 export type AppointmentStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
+export type ConfirmationStatus = 'PENDING' | 'CONFIRMED' | 'RESCHEDULED';
 
 class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttributes<Appointment>> {
   declare id: CreationOptional<string>;
@@ -11,6 +12,9 @@ class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttri
   declare type: CreationOptional<AppointmentType>;
   declare status: CreationOptional<AppointmentStatus>;
   declare notes: CreationOptional<string | null>;
+  declare confirmationStatus: CreationOptional<ConfirmationStatus>;
+  declare reminderSentAt: CreationOptional<Date | null>;
+  declare followupSentAt: CreationOptional<Date | null>;
 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -51,6 +55,19 @@ class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttri
           type: DataTypes.TEXT,
           allowNull: true
         },
+        confirmationStatus: {
+          type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'RESCHEDULED'),
+          allowNull: false,
+          defaultValue: 'PENDING'
+        },
+        reminderSentAt: {
+          type: DataTypes.DATE,
+          allowNull: true
+        },
+        followupSentAt: {
+          type: DataTypes.DATE,
+          allowNull: true
+        },
         createdAt: DataTypes.DATE,
         updatedAt: DataTypes.DATE,
         deletedAt: DataTypes.DATE
@@ -63,7 +80,10 @@ class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttri
         indexes: [
           { fields: ['tenantId'], name: 'appointments_tenant_id_idx' },
           { fields: ['petId'], name: 'appointments_pet_id_idx' },
-          { fields: ['date'], name: 'appointments_date_idx' }
+          { fields: ['date'], name: 'appointments_date_idx' },
+          { fields: ['confirmationStatus'], name: 'appointments_confirmation_status_idx' },
+          { fields: ['reminderSentAt'], name: 'appointments_reminder_sent_at_idx' },
+          { fields: ['followupSentAt'], name: 'appointments_followup_sent_at_idx' }
         ]
       }
     );

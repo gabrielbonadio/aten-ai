@@ -2,6 +2,8 @@
 node_modules/
 dist/
 build/
+coverage/
+test-output.txt
 
 # Variáveis de ambiente — NUNCA versionar credenciais
 .env

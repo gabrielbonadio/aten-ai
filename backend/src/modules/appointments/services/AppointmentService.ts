@@ -1,8 +1,9 @@
 import { Op } from 'sequelize';
 import { NotFoundError } from '../../../shared/errors/AppError';
-import type { IWebhookProvider } from '../../../shared/providers/WebhookProvider/IWebhookProvider';
-import { N8nWebhookProvider } from '../../../shared/providers/WebhookProvider/N8nWebhookProvider';
+import webhookService from '../../../shared/services/WebhookService';
+import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
 import Pet from '../../pets/models/Pet';
+import Tenant from '../../tenants/models/Tenant';
 import Tutor from '../../tutors/models/Tutor';
 import Appointment from '../models/Appointment';
 import type { AppointmentStatus, AppointmentType } from '../models/Appointment';
@@ -24,10 +25,18 @@ export type ListAppointmentsFilters = {
 export type UpdateAppointmentInput = Partial<CreateAppointmentInput>;
 
 class AppointmentService {
-  constructor(private readonly webhookProvider: IWebhookProvider = new N8nWebhookProvider()) {}
-
   async create(data: CreateAppointmentInput, tenantId: number): Promise<Appointment> {
-    const pet = await Pet.findOne({ where: { [Op.and]: [{ id: data.petId }, { tenantId }] } });
+    const pet = await Pet.findOne({
+      where: { [Op.and]: [{ id: data.petId }, { tenantId }] },
+      include: [
+        {
+          model: Tutor,
+          as: 'tutor',
+          required: true,
+          where: { tenantId }
+        }
+      ]
+    });
     if (!pet) throw new NotFoundError('Pet não encontrado.');
 
     const appointment = await Appointment.create({
@@ -39,43 +48,29 @@ class AppointmentService {
       notes: data.notes?.trim() || null
     });
 
-    // Disparo assíncrono para automação (n8n). Não deve quebrar o fluxo caso falhe.
-    const full = await Appointment.findOne({
-      where: { [Op.and]: [{ id: appointment.id }, { tenantId }] },
-      include: [
-        {
-          model: Pet,
-          as: 'pet',
-          required: true,
-          where: { tenantId },
-          include: [
-            {
-              model: Tutor,
-              as: 'tutor',
-              required: true,
-              where: { tenantId }
-            }
-          ]
-        }
-      ]
-    });
+    // Disparo fire-and-forget para automação (n8n).
+    // Falha aqui NUNCA pode interromper a criação do agendamento.
+    try {
+      const tenant = await Tenant.findByPk(tenantId);
+      const tutor = (pet as Pet & { tutor: Tutor }).tutor;
 
-    if (full) {
-      const petWithTutor = (full as any).pet;
-      if (petWithTutor?.tutor) {
-        await this.webhookProvider.dispatchAppointmentCreated({
-          appointmentId: full.id,
-          tenantId: String(tenantId),
-          petId: full.petId,
-          petName: petWithTutor.name,
-          tutorName: petWithTutor.tutor.name,
-          tutorPhone: petWithTutor.tutor.phone,
-          date: full.date.toISOString(),
-          dateFormatted: full.date.toLocaleString('pt-BR'),
-          type: full.type,
-          status: full.status
+      if (tenant && tutor) {
+        webhookService.dispatch('appointment.created', {
+          appointment_id: appointment.id,
+          clinic_name: tenant.name,
+          tutor_name: tutor.name,
+          tutor_phone: formatBrazilPhoneE164(tutor.phone),
+          pet_name: pet.name,
+          appointment_datetime: appointment.date.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo'
+          }),
+          appointment_datetime_iso: appointment.date.toISOString(),
+          appointment_type: appointment.type,
+          appointment_status: appointment.status
         });
       }
+    } catch (err) {
+      console.error('[AppointmentService] Falha ao preparar webhook appointment.created:', err);
     }
 
     return appointment;
@@ -158,4 +153,3 @@ class AppointmentService {
 }
 
 export default new AppointmentService();
-

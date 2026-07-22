@@ -17,7 +17,8 @@ $skills = @(
     @{ Name = "typescript-advanced-types"; Source = ".agents\skills\typescript-advanced-types" },
     @{ Name = "writing-plans"; Source = ".agents\skills\writing-plans" },
     @{ Name = "systematic-debugging"; Source = ".agents\skills\systematic-debugging" },
-    @{ Name = "find-skills"; Source = ".agents\skills\find-skills" }
+    @{ Name = "find-skills"; Source = ".agents\skills\find-skills" },
+    @{ Name = "web-design-guidelines"; Source = ".agents\skills\web-design-guidelines" }
 )
 
 New-Item -ItemType Directory -Path $destBase -Force | Out-Null

@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import bcrypt from 'bcrypt';
-import bcryptjs from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import sequelize from '../../../config/database';
 import { AppError, ConflictError, UnauthorizedError } from '../../../shared/errors/AppError';
 import type { IMailProvider } from '../../../shared/providers/MailProvider/IMailProvider';
@@ -166,7 +165,8 @@ class AuthService {
       expiresAt
     });
 
-    const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+    const frontendBase = (process.env.FRONTEND_URL ?? 'http://localhost:4200').replace(/\/$/, '');
+    const resetLink = `${frontendBase}/reset-password?token=${token}`;
 
     try {
       const html = `
@@ -196,7 +196,7 @@ class AuthService {
         throw new AppError('Token inválido ou expirado', 400);
       }
 
-      const password_hash = await bcryptjs.hash(password, BCRYPT_SALT_ROUNDS);
+      const password_hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
       await userRepository.updatePasswordHash(user.id, password_hash, { transaction });
 
       await userTokenRepository.deleteById(tokenRow.id, { transaction });

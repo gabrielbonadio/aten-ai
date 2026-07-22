@@ -3,11 +3,11 @@ import dotenv from 'dotenv';
 import Tenant from '../modules/tenants/models/Tenant';
 import User from '../modules/auth/models/User';
 import UserToken from '../modules/auth/models/UserToken';
-import Customer from '../modules/customers/models/Customer';
 import Tutor from '../modules/tutors/models/Tutor';
 import Pet from '../modules/pets/models/Pet';
 import Appointment from '../modules/appointments/models/Appointment';
 import MedicalRecord from '../modules/medical-records/models/MedicalRecord';
+import ConversationState from '../modules/conversations/models/ConversationState';
 
 // Carrega as variáveis de ambiente
 dotenv.config();
@@ -33,20 +33,17 @@ const sequelize = new Sequelize(
 Tenant.initModel(sequelize);
 User.initModel(sequelize);
 UserToken.initModel(sequelize);
-Customer.initModel(sequelize);
 Tutor.initModel(sequelize);
 Pet.initModel(sequelize);
 Appointment.initModel(sequelize);
 MedicalRecord.initModel(sequelize);
+ConversationState.initModel(sequelize);
 
 Tenant.hasMany(User, { foreignKey: 'tenantId', as: 'users' });
 User.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
 
 User.hasMany(UserToken, { foreignKey: 'userId', as: 'tokens' });
 UserToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-
-Tenant.hasMany(Customer, { foreignKey: 'tenantId', as: 'customers' });
-Customer.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
 
 Tenant.hasMany(Tutor, { foreignKey: 'tenantId', as: 'tutors' });
 Tutor.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });

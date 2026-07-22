@@ -7,6 +7,12 @@ alwaysApply: true
 
 Antes de **implementar funcionalidade**, **alterar auth/dados**, **UI pública**, **multi-tenant**, **custos/infra** ou **observabilidade**, abre e segue o `SKILL.md` adequado em `.agent-skills/<nome>/` (junctions para skills em `%USERPROFILE%\.claude\skills` e `%USERPROFILE%\.agents\skills`).
 
+## Skill overlay do projeto (Aten AI)
+
+Quando o trabalho for **padrões internos do Aten**, **arquitetura**, **convenções de migração**, **contratos multi-tenant**, **formato de erros/logs** ou “como fazemos aqui”, leia primeiro:
+
+- `.agent-skills/aten-ai/SKILL.md`
+
 ## Ordem de prioridade — produto e dados
 
 1. **security** — dados de clientes finais, sessões, segredos, LGPD, minimização de dados, APIs.

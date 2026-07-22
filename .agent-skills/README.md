@@ -31,5 +31,6 @@ PowerShell, na raiz de `aten-ai`:
 | `writing-plans` | `.agents` | planear trabalho antes de implementar |
 | `systematic-debugging` | `.agents` | debug sistemático |
 | `find-skills` | `.agents` | descobrir skills úteis |
+| `web-design-guidelines` | `.agents` | guidelines práticas de web design |
 
 A regra `.cursor/rules/aten-ai-skill-stack.mdc` define **quando** ler cada uma.
