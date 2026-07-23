@@ -20,8 +20,9 @@ import { ShellLayoutService } from '../core/services/shell-layout.service';
         ></button>
       }
 
+      <!-- Sidebar sempre fixed; no desktop o spacer abaixo reserva a largura. -->
       <div
-        class="fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0"
+        class="fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out"
         [ngClass]="
           shell.mobileNavOpen() ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         "
@@ -35,7 +36,13 @@ import { ShellLayoutService } from '../core/services/shell-layout.service';
         />
       </div>
 
-      <div class="flex min-w-0 min-h-screen flex-1 flex-col">
+      <div
+        class="hidden shrink-0 md:block"
+        [ngClass]="shell.sidebarCollapsed() ? 'w-20' : 'w-64'"
+        aria-hidden="true"
+      ></div>
+
+      <div class="flex min-h-screen min-w-0 flex-1 flex-col">
         <div id="main-content" tabindex="-1" class="flex min-h-0 min-w-0 flex-1 flex-col outline-none">
           <router-outlet />
         </div>

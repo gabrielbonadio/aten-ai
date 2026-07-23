@@ -109,29 +109,61 @@
           <label for="tutor-search" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">
             Tutor <span class="text-red-500" aria-hidden="true">*</span>
           </label>
-          <input
-            id="tutor-search"
-            type="search"
-            [value]="tutorFilter()"
-            (input)="tutorFilter.set($any($event.target).value)"
-            class="mb-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-            placeholder="Buscar por nome, telefone ou e-mail…"
-            autocomplete="off"
-          />
-          <select
-            id="pet-tutor"
-            formControlName="tutorId"
-            class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-            [disabled]="tutorsLoading()"
-          >
-            <option value="">Selecione o tutor…</option>
-            @for (tutor of filteredTutors(); track tutor.id) {
-              <option [value]="tutor.id">{{ tutor.name }}</option>
+          <div class="relative">
+            <input
+              id="tutor-search"
+              type="text"
+              role="combobox"
+              [attr.aria-expanded]="tutorDropdownOpen()"
+              aria-autocomplete="list"
+              aria-controls="tutor-options"
+              [value]="tutorSearchTerm()"
+              (input)="onTutorSearchInput($event)"
+              (focus)="onTutorSearchFocus()"
+              (blur)="onTutorSearchBlur()"
+              class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 pr-10 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              placeholder="Digite para buscar o tutor…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <div class="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-zinc-400">
+              <lucide-icon name="search" class="h-4 w-4" aria-hidden="true"></lucide-icon>
+            </div>
+
+            @if (tutorDropdownOpen() && open()) {
+              <div
+                id="tutor-options"
+                role="listbox"
+                class="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                @if (tutorsLoading()) {
+                  <div class="px-3 py-2.5 text-xs text-zinc-500 dark:text-zinc-400">Carregando tutores…</div>
+                } @else if (filteredTutors().length === 0) {
+                  <div class="px-3 py-2.5 text-sm text-zinc-600 dark:text-zinc-300">
+                    Nenhum tutor encontrado
+                  </div>
+                } @else {
+                  @for (tutor of filteredTutors().slice(0, 30); track tutor.id) {
+                    <button
+                      type="button"
+                      role="option"
+                      class="w-full px-3 py-2.5 text-left hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                      [attr.aria-selected]="form.controls.tutorId.value === tutor.id"
+                      (mousedown)="selectTutor(tutor)"
+                    >
+                      <div class="text-sm font-medium text-zinc-900 dark:text-zinc-50">{{ tutor.name }}</div>
+                      <div class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ tutor.phone || tutor.email || 'Sem contato' }}
+                      </div>
+                    </button>
+                  }
+                }
+              </div>
             }
-          </select>
+          </div>
           @if (tutorsLoading()) {
-            <p class="mt-2 flex items-center gap-2 text-xs text-zinc-500">
-              <lucide-icon name="loader" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
+            <p class="mt-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <lucide-icon name="loader" class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></lucide-icon>
               Carregando tutores…
             </p>
           } @else if (tutors().length === 0) {

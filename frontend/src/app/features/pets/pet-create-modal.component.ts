@@ -33,6 +33,8 @@ export class PetCreateModalComponent implements OnInit {
   readonly tutors = signal<Tutor[]>([]);
   readonly tutorsLoading = signal(false);
   readonly tutorFilter = signal('');
+  readonly tutorSearchTerm = signal('');
+  readonly tutorDropdownOpen = signal(false);
   readonly submitting = signal(false);
 
   readonly filteredTutors = computed(() => {
@@ -42,7 +44,7 @@ export class PetCreateModalComponent implements OnInit {
     return list.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
-        t.phone.toLowerCase().includes(q) ||
+        (t.phone?.toLowerCase().includes(q) ?? false) ||
         (t.email?.toLowerCase().includes(q) ?? false)
     );
   });
@@ -69,16 +71,15 @@ export class PetCreateModalComponent implements OnInit {
     this.tutorsLoading.set(true);
     this.tutorService.findAll().subscribe({
       next: (data) => {
-        console.log('Tutores carregados:', data);
         const list = Array.isArray(data) ? data : [];
         this.tutors.set(list);
         this.tutorsLoading.set(false);
+        this.syncTutorSearchLabel();
         if (list.length === 0 && this.open()) {
           this.notifications.warning('Cadastre um tutor antes de adicionar um pet.');
         }
       },
       error: (err: unknown) => {
-        console.error('Erro ao buscar tutores:', err);
         this.tutors.set([]);
         this.tutorsLoading.set(false);
         const msg =
@@ -88,8 +89,53 @@ export class PetCreateModalComponent implements OnInit {
     });
   }
 
+  private syncTutorSearchLabel(): void {
+    const id = this.form.controls.tutorId.value;
+    if (!id) {
+      this.tutorSearchTerm.set('');
+      return;
+    }
+    const tutor = this.tutors().find((t) => t.id === id);
+    this.tutorSearchTerm.set(tutor?.name ?? '');
+  }
+
+  onTutorSearchInput(ev: Event): void {
+    const value = ((ev.target as HTMLInputElement).value ?? '').toString();
+    this.tutorSearchTerm.set(value);
+    this.tutorFilter.set(value);
+    this.tutorDropdownOpen.set(true);
+    // Digitar invalida seleção anterior até escolher de novo
+    if (this.form.controls.tutorId.value) {
+      const selected = this.tutors().find((t) => t.id === this.form.controls.tutorId.value);
+      if (!selected || selected.name !== value) {
+        this.form.controls.tutorId.setValue('');
+      }
+    }
+  }
+
+  onTutorSearchFocus(): void {
+    this.tutorDropdownOpen.set(true);
+    if (!this.tutorFilter()) {
+      this.tutorFilter.set('');
+    }
+  }
+
+  onTutorSearchBlur(): void {
+    setTimeout(() => this.tutorDropdownOpen.set(false), 150);
+  }
+
+  selectTutor(tutor: Tutor): void {
+    this.form.controls.tutorId.setValue(tutor.id);
+    this.form.controls.tutorId.markAsTouched();
+    this.tutorSearchTerm.set(tutor.name);
+    this.tutorFilter.set('');
+    this.tutorDropdownOpen.set(false);
+  }
+
   openForCreate(): void {
     this.tutorFilter.set('');
+    this.tutorSearchTerm.set('');
+    this.tutorDropdownOpen.set(false);
     this.form.reset({
       name: '',
       species: '',
@@ -115,6 +161,7 @@ export class PetCreateModalComponent implements OnInit {
           : pet.weight;
 
     this.tutorFilter.set('');
+    this.tutorDropdownOpen.set(false);
     this.form.reset({
       name: pet.name ?? '',
       species: pet.species ?? '',
@@ -123,6 +170,7 @@ export class PetCreateModalComponent implements OnInit {
       weight: Number.isFinite(weight as number) ? (weight as number) : null,
       tutorId: pet.tutorId ?? ''
     });
+    this.tutorSearchTerm.set(pet.tutor?.name?.trim() || '');
     this.loadTutors();
   }
 
@@ -137,6 +185,8 @@ export class PetCreateModalComponent implements OnInit {
       tutorId: ''
     });
     this.tutorFilter.set('');
+    this.tutorSearchTerm.set('');
+    this.tutorDropdownOpen.set(false);
     this.dismissed.emit();
   }
 

@@ -1,4 +1,4 @@
-import { DatePipe, NgClass } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
@@ -17,14 +17,16 @@ type AgendaRowView = Appointment & {
   tutorName: string;
   typeLabel: string;
   statusLabel: string;
+  sortMs: number;
 };
+
+type FilterMode = 'month' | 'range';
 
 @Component({
   selector: 'app-agenda',
   standalone: true,
   imports: [
     NgClass,
-    DatePipe,
     LucideAngularModule,
     ShellMenuButtonComponent,
     ThemeToggleComponent,
@@ -47,32 +49,65 @@ export class AgendaComponent implements OnInit {
   readonly appointmentToDelete = signal<string | null>(null);
   readonly deleting = signal(false);
 
+  /** Filtro: mês inteiro (padrão) ou intervalo de datas. */
+  readonly filterMode = signal<FilterMode>('month');
+  readonly monthValue = signal(this.currentMonthValue());
+  readonly rangeFrom = signal('');
+  readonly rangeTo = signal('');
+
   @ViewChild(AppointmentCreateModalComponent)
   private readonly appointmentModal?: AppointmentCreateModalComponent;
 
-  readonly upcomingAppointments = computed<AgendaRowView[]>(() => {
+  readonly filteredAppointments = computed<AgendaRowView[]>(() => {
     const list = this.appointments();
+    const mode = this.filterMode();
+    const month = this.monthValue();
+    const from = this.rangeFrom();
+    const to = this.rangeTo();
 
     return list
-      .sort((a, b) => {
-        const da = this.parseDate(this.whenOf(a))?.getTime() ?? 0;
-        const db = this.parseDate(this.whenOf(b))?.getTime() ?? 0;
-        return da - db;
-      })
       .map((a) => {
         const dt = this.parseDate(this.whenOf(a));
-        const timeLabel = dt ? this.hhmm(dt) : '—';
-        const petName = a.pet?.name?.trim() || '—';
-        const tutorName = a.pet?.tutor?.name?.trim() || a.tutor?.name?.trim() || '—';
-        const typeLabel = this.typeLabelFor(typeof a.type === 'string' ? a.type : '');
-        const statusLabel = this.statusLabelFor((a.status as string | null | undefined)?.trim() || '');
-        return { ...a, timeLabel, petName, tutorName, typeLabel, statusLabel };
-      });
+        return {
+          appointment: a,
+          dt,
+          sortMs: dt?.getTime() ?? 0,
+          timeLabel: dt ? this.hhmm(dt) : '—',
+          petName: a.pet?.name?.trim() || '—',
+          tutorName: a.pet?.tutor?.name?.trim() || a.tutor?.name?.trim() || '—',
+          typeLabel: this.typeLabelFor(typeof a.type === 'string' ? a.type : ''),
+          statusLabel: this.statusLabelFor((a.status as string | null | undefined)?.trim() || '')
+        };
+      })
+      .filter((row) => {
+        if (!row.dt) return false;
+        if (mode === 'month') {
+          if (!month || month.length < 7) return true;
+          const [y, m] = month.split('-').map(Number);
+          return row.dt.getFullYear() === y && row.dt.getMonth() + 1 === m;
+        }
+        const day = this.dateKey(row.dt);
+        if (from && day < from) return false;
+        if (to && day > to) return false;
+        return true;
+      })
+      .sort((a, b) => b.sortMs - a.sortMs)
+      .map(
+        (row): AgendaRowView => ({
+          ...row.appointment,
+          timeLabel: row.timeLabel,
+          petName: row.petName,
+          tutorName: row.tutorName,
+          typeLabel: row.typeLabel,
+          statusLabel: row.statusLabel,
+          sortMs: row.sortMs
+        })
+      );
   });
 
   readonly groupedUpcoming = computed(() => {
     const groups = new Map<string, AgendaRowView[]>();
-    for (const a of this.upcomingAppointments()) {
+    for (const a of this.filteredAppointments()) {
       const dt = this.parseDate(this.whenOf(a));
       const key = dt ? this.dateKey(dt) : 'Sem data';
       const bucket = groups.get(key) ?? [];
@@ -80,12 +115,18 @@ export class AgendaComponent implements OnInit {
       groups.set(key, bucket);
     }
 
+    // Datas mais recentes primeiro (Map preserva ordem de inserção → já inserimos desc)
     return Array.from(groups.entries()).map(([key, items]) => ({
       key,
       title: key === 'Sem data' ? key : this.prettyDateTitle(key),
       items
     }));
   });
+
+  readonly hasAnyAppointments = computed(() => this.appointments().length > 0);
+  readonly filterEmpty = computed(
+    () => this.hasAnyAppointments() && this.filteredAppointments().length === 0
+  );
 
   ngOnInit(): void {
     this.load();
@@ -104,6 +145,33 @@ export class AgendaComponent implements OnInit {
         this.loadError.set(true);
       }
     });
+  }
+
+  setFilterMode(mode: FilterMode): void {
+    this.filterMode.set(mode);
+    if (mode === 'month' && !this.monthValue()) {
+      this.monthValue.set(this.currentMonthValue());
+    }
+  }
+
+  onMonthInput(ev: Event): void {
+    const v = (ev.target as HTMLInputElement).value;
+    this.monthValue.set(v);
+  }
+
+  onRangeFromInput(ev: Event): void {
+    this.rangeFrom.set((ev.target as HTMLInputElement).value);
+  }
+
+  onRangeToInput(ev: Event): void {
+    this.rangeTo.set((ev.target as HTMLInputElement).value);
+  }
+
+  clearFilters(): void {
+    this.filterMode.set('month');
+    this.monthValue.set(this.currentMonthValue());
+    this.rangeFrom.set('');
+    this.rangeTo.set('');
   }
 
   openCreateModal(): void {
@@ -155,7 +223,6 @@ export class AgendaComponent implements OnInit {
     if (s === 'SCHEDULED' || s === 'AGENDADO') return 'Agendado';
     if (s === 'COMPLETED' || s === 'CONCLUIDO' || s === 'CONCLUÍDO') return 'Concluído';
     if (s === 'CANCELED' || s === 'CANCELADO' || s === 'CANCELLED') return 'Cancelado';
-    // fallback
     return apiStatus?.trim() || 'Agendado';
   }
 
@@ -191,13 +258,17 @@ export class AgendaComponent implements OnInit {
     });
   }
 
+  private currentMonthValue(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
   private parseDate(input: string): Date | null {
     const d = new Date(input);
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
   private whenOf(a: Appointment): string {
-    // Compatibilidade: alguns backends usam `date`; outros `scheduledAt`
     const anyA = a as unknown as { date?: unknown; scheduledAt?: unknown };
     const d = anyA.date;
     if (typeof d === 'string' && d.trim()) return d;
@@ -220,14 +291,13 @@ export class AgendaComponent implements OnInit {
   }
 
   private prettyDateTitle(key: string): string {
-    // key: YYYY-MM-DD
-    const dt = new Date(`${key}T12:00:00.000Z`);
+    const dt = new Date(`${key}T12:00:00`);
     const s = new Intl.DateTimeFormat('pt-BR', {
       weekday: 'long',
       day: '2-digit',
-      month: 'long'
+      month: 'long',
+      year: 'numeric'
     }).format(dt);
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
-
 }
