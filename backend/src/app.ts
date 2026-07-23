@@ -17,24 +17,35 @@ class App {
   }
 
   private middlewares(): void {
-    // Helmet para segurança básica de cabeçalhos HTTP
     this.express.use(helmet());
 
-    // Em produção, restrinja CORS à URL do portal (FRONTEND_URL).
-    // Em dev sem FRONTEND_URL, mantém o comportamento permissivo do cors().
+    const nodeEnv = (process.env.NODE_ENV ?? 'development').trim().toLowerCase();
     const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/$/, '');
-    this.express.use(
-      frontendUrl
-        ? cors({
-            origin: [frontendUrl, /^http:\/\/localhost:\d+$/],
-            credentials: true
-          })
-        : cors()
-    );
 
-    // Parsear o corpo das requisições para JSON
-    this.express.use(express.json());
-    this.express.use(express.urlencoded({ extended: true }));
+    if (nodeEnv === 'production') {
+      if (!frontendUrl) {
+        throw new Error('FRONTEND_URL é obrigatório em production para configurar CORS.');
+      }
+      this.express.use(
+        cors({
+          origin: frontendUrl,
+          credentials: true
+        })
+      );
+    } else if (frontendUrl) {
+      this.express.use(
+        cors({
+          origin: [frontendUrl, /^http:\/\/localhost:\d+$/],
+          credentials: true
+        })
+      );
+    } else {
+      // Dev sem FRONTEND_URL: permissivo apenas fora de production.
+      this.express.use(cors());
+    }
+
+    this.express.use(express.json({ limit: '100kb' }));
+    this.express.use(express.urlencoded({ extended: true, limit: '100kb' }));
   }
 
   private routes(): void {
@@ -42,7 +53,10 @@ class App {
       void healthHandler(req, res).catch(next);
     });
 
-    this.express.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    const nodeEnv = (process.env.NODE_ENV ?? 'development').trim().toLowerCase();
+    if (nodeEnv !== 'production') {
+      this.express.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    }
 
     this.express.use(routes);
 

@@ -38,6 +38,6 @@ describe('GET /health', () => {
 
     expect(res.body.status).toBe('degraded');
     expect(res.body.checks.database.status).toBe('down');
-    expect(res.body.checks.database.error).toContain('ECONNREFUSED');
+    expect(res.body.checks.database.error).toBe('database_unreachable');
   });
 });

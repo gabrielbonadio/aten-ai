@@ -1,4 +1,9 @@
 import Joi from 'joi';
+import { paginationQuerySchema } from '../../../shared/schemas/pagination.schema';
+
+export const listPetsQuerySchema = Joi.object({
+  ...paginationQuerySchema
+});
 
 export const createPetSchema = Joi.object({
   tutorId: Joi.string().uuid().required(),

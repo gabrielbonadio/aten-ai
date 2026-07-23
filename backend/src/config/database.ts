@@ -20,12 +20,12 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
     dialect: 'mysql',
-    logging: false, // Desliga os logs das queries no terminal (podemos ligar depois para debug)
+    logging: false,
     pool: {
-      max: 5,        // Máximo de conexões simultâneas
-      min: 0,
-      acquire: 30000,
-      idle: 10000
+      max: Number(process.env.DB_POOL_MAX ?? 5),
+      min: Number(process.env.DB_POOL_MIN ?? 0),
+      acquire: Number(process.env.DB_POOL_ACQUIRE_MS ?? 30000),
+      idle: Number(process.env.DB_POOL_IDLE_MS ?? 10000)
     }
   }
 );

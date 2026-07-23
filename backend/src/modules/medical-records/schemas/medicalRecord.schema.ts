@@ -1,4 +1,9 @@
 import Joi from 'joi';
+import { paginationQuerySchema } from '../../../shared/schemas/pagination.schema';
+
+export const listMedicalRecordsQuerySchema = Joi.object({
+  ...paginationQuerySchema
+});
 
 export const createMedicalRecordSchema = Joi.object({
   petId: Joi.string().uuid().required(),
@@ -16,4 +21,3 @@ export const updateMedicalRecordSchema = Joi.object({
   prescription: Joi.string().allow('', null).optional(),
   weight: Joi.number().precision(2).min(0.01).max(999.99).allow(null).optional()
 }).min(1);
-

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticated';
+import { ensureRole } from '../../shared/middlewares/ensureRole';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import SettingsController from './controllers/SettingsController';
 import { updateTenantSettingsSchema } from './schemas/settings.schema';
@@ -25,9 +26,14 @@ settingsRoutes.get('/settings', SettingsController.show);
  * /settings:
  *   put:
  *     tags: [Settings]
- *     summary: Atualizar dados cadastrais da clínica
+ *     summary: Atualizar dados cadastrais da clínica (somente ADMIN)
  *     security: [{ bearerAuth: [] }]
  */
-settingsRoutes.put('/settings', validateSchema(updateTenantSettingsSchema), SettingsController.update);
+settingsRoutes.put(
+  '/settings',
+  ensureRole(['ADMIN']),
+  validateSchema(updateTenantSettingsSchema),
+  SettingsController.update
+);
 
 export default settingsRoutes;

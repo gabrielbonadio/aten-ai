@@ -7,9 +7,10 @@ export type AccessTokenPayload = {
   tenantId: string;
 };
 
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d';
+/** Access token curto por padrão; refresh token cobre a sessão longa. */
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1h';
 
-const MIN_SECRET_LENGTH = 16;
+const MIN_SECRET_LENGTH = 32;
 
 /**
  * Lê JWT_SECRET em tempo de execução (não em carga do módulo), para funcionar
@@ -30,7 +31,7 @@ function requireJwtSecret(): string {
 
 export function signAccessToken(payload: AccessTokenPayload): string {
   const signOptions: SignOptions = {
-    expiresIn: (JWT_EXPIRES_IN ?? '7d') as SignOptions['expiresIn']
+    expiresIn: (JWT_EXPIRES_IN ?? '1h') as SignOptions['expiresIn']
   };
   return jwt.sign(payload, requireJwtSecret(), signOptions);
 }

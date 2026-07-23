@@ -2,6 +2,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import {
+  LIST_PAGE_SIZE,
+  type PaginatedResponse,
+  unwrapPaginatedList
+} from '../models/pagination.model';
 import type { CreateTutorPayload, Tutor } from '../models/tutor.model';
 
 @Injectable({ providedIn: 'root' })
@@ -23,10 +28,11 @@ export class TutorService {
    */
   findAll(search?: string): Observable<Tutor[]> {
     const q = search?.trim();
+    let params = new HttpParams().set('page', '1').set('pageSize', String(LIST_PAGE_SIZE));
     if (q) {
-      const params = new HttpParams().set('search', q);
-      return this.http.get<Tutor[]>(this.baseUrl(), { params }).pipe(
-        map((list) => (Array.isArray(list) ? list : [])),
+      params = params.set('search', q);
+      return this.http.get<PaginatedResponse<Tutor> | Tutor[]>(this.baseUrl(), { params }).pipe(
+        map((body) => unwrapPaginatedList<Tutor>(body)),
         catchError((err) => {
           console.warn('[TutorService] Falha ao listar tutores:', err);
           return of([]);
@@ -37,9 +43,9 @@ export class TutorService {
     const cached = this.cachedTutors();
     if (cached) return of(cached);
 
-    return this.http.get<Tutor[]>(this.baseUrl()).pipe(
-      map((list) => {
-        const safe = Array.isArray(list) ? list : [];
+    return this.http.get<PaginatedResponse<Tutor> | Tutor[]>(this.baseUrl(), { params }).pipe(
+      map((body) => {
+        const safe = unwrapPaginatedList<Tutor>(body);
         this.cachedTutors.set(safe);
         return safe;
       }),

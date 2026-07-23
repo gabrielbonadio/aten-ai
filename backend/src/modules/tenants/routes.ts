@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { validateSchema } from '../../shared/middlewares/validateSchema';
-import TenantController from './controllers/TenantController';
-import { createTenantSchema } from './schemas/tenant.schema';
 
+/**
+ * Rotas administrativas de tenants foram removidas da API pública.
+ * - Criação de tenant: POST /auth/signup
+ * - Dados da clínica do usuário: GET/PUT /settings
+ *
+ * Mantemos o router vazio exportado para não quebrar imports legados.
+ */
 const tenantsRoutes = Router();
-
-tenantsRoutes.get('/tenants', TenantController.index);
-tenantsRoutes.post('/tenants', validateSchema(createTenantSchema), TenantController.store);
 
 export default tenantsRoutes;

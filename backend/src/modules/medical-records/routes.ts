@@ -3,7 +3,7 @@ import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticate
 import { ensureRole } from '../../shared/middlewares/ensureRole';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import MedicalRecordController from './controllers/MedicalRecordController';
-import { createMedicalRecordSchema, updateMedicalRecordSchema } from './schemas/medicalRecord.schema';
+import { createMedicalRecordSchema, listMedicalRecordsQuerySchema, updateMedicalRecordSchema } from './schemas/medicalRecord.schema';
 
 const medicalRecordsRoutes = Router();
 
@@ -87,7 +87,11 @@ medicalRecordsRoutes.post('/medical-records', validateSchema(createMedicalRecord
  */
 medicalRecordsRoutes.get('/pets/:petId/medical-records', MedicalRecordController.byPet);
 
-medicalRecordsRoutes.get('/medical-records', MedicalRecordController.index);
+medicalRecordsRoutes.get(
+  '/medical-records',
+  validateSchema(listMedicalRecordsQuerySchema, 'query'),
+  MedicalRecordController.index
+);
 medicalRecordsRoutes.get('/medical-records/:id', MedicalRecordController.show);
 medicalRecordsRoutes.put('/medical-records/:id', validateSchema(updateMedicalRecordSchema), MedicalRecordController.update);
 medicalRecordsRoutes.delete('/medical-records/:id', ensureRole(['ADMIN']), MedicalRecordController.destroy);

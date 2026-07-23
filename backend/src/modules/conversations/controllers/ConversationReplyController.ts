@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
+import { logger } from '../../../shared/logging/logger';
 import conversationReplyService from '../services/ConversationReplyService';
 import type { ConversationIntent } from '../repositories/ConversationStateRepository';
 import type { ConversationReplyAction } from '../services/ConversationReplyService';
@@ -23,6 +24,7 @@ class ConversationReplyController {
    *
    * Corpo esperado: `{ tenantId, tutorPhone, intent, action }`
    * — rota protegida por shared secret (`Authorization: Bearer <N8N_WEBHOOK_SECRET>`).
+   * A mutação só ocorre se existir ConversationState válido para tenantId+phone+intent.
    */
   async reply(req: Request, res: Response): Promise<void> {
     try {
@@ -43,7 +45,9 @@ class ConversationReplyController {
         return;
       }
 
-      console.error('[ConversationReplyController] erro inesperado em POST /conversations/reply:', err);
+      logger.error('conversations.reply_unexpected', {
+        error: err instanceof Error ? err.message : String(err)
+      });
       res.status(500).json({ message: 'Erro interno ao processar a resposta da conversa.' });
     }
   }

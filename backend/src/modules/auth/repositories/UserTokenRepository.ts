@@ -1,10 +1,11 @@
 import type { Transaction } from 'sequelize';
-import UserToken from '../models/UserToken';
+import UserToken, { type UserTokenPurpose } from '../models/UserToken';
 
 export type CreateUserTokenData = {
   token: string;
   userId: string;
   expiresAt: Date;
+  purpose: UserTokenPurpose;
 };
 
 class UserTokenRepository {
@@ -12,9 +13,13 @@ class UserTokenRepository {
     return UserToken.create(data, { transaction: options?.transaction });
   }
 
-  async findByToken(token: string, options?: { transaction?: Transaction }): Promise<UserToken | null> {
+  async findByToken(
+    token: string,
+    purpose?: UserTokenPurpose,
+    options?: { transaction?: Transaction }
+  ): Promise<UserToken | null> {
     return UserToken.findOne({
-      where: { token },
+      where: purpose ? { token, purpose } : { token },
       transaction: options?.transaction
     });
   }
@@ -25,7 +30,17 @@ class UserTokenRepository {
       transaction: options?.transaction
     });
   }
+
+  async deleteByUserIdAndPurpose(
+    userId: string,
+    purpose: UserTokenPurpose,
+    options?: { transaction?: Transaction }
+  ): Promise<void> {
+    await UserToken.destroy({
+      where: { userId, purpose },
+      transaction: options?.transaction
+    });
+  }
 }
 
 export default new UserTokenRepository();
-

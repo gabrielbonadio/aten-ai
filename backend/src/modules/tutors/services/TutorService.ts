@@ -65,7 +65,10 @@ class TutorService {
     });
   }
 
-  async findAll(tenantId: number, options?: { search?: string }): Promise<Tutor[]> {
+  async findAll(
+    tenantId: number,
+    options?: { search?: string; limit?: number; offset?: number }
+  ): Promise<{ rows: Tutor[]; count: number }> {
     const search = options?.search?.trim();
     const where: import('sequelize').WhereOptions<Tutor> = { tenantId };
 
@@ -77,9 +80,12 @@ class TutorService {
       ];
     }
 
-    return Tutor.findAll({
+    return Tutor.findAndCountAll({
       where,
       order: [['createdAt', 'DESC']],
+      limit: options?.limit,
+      offset: options?.offset,
+      distinct: true,
       include: [
         {
           model: Pet,

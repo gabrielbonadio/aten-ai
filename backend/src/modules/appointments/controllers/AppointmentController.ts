@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
+import { buildPaginatedResult, parsePagination } from '../../../shared/utils/pagination';
 import appointmentService from '../services/AppointmentService';
 import type { AppointmentStatus, AppointmentType } from '../models/Appointment';
 
@@ -67,14 +68,19 @@ class AppointmentController {
       startDate?: string;
       endDate?: string;
     };
+    const { page, pageSize, limit, offset } = parsePagination(req.query as Record<string, unknown>);
 
-    const appointments = await appointmentService.findAll(tenantId, {
-      status,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined
-    });
+    const { rows, count } = await appointmentService.findAll(
+      tenantId,
+      {
+        status,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined
+      },
+      { limit, offset }
+    );
 
-    res.status(200).json(appointments);
+    res.status(200).json(buildPaginatedResult(rows, count, page, pageSize));
   }
 
   async updateStatus(req: Request, res: Response): Promise<void> {
@@ -98,4 +104,3 @@ class AppointmentController {
 }
 
 export default new AppointmentController();
-

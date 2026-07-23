@@ -1,7 +1,12 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import {
+  LIST_PAGE_SIZE,
+  type PaginatedResponse,
+  unwrapPaginatedList
+} from '../models/pagination.model';
 import type { CreatePetPayload, Pet } from '../models/pet.model';
 import type { Appointment } from '../models/appointment.model';
 import type { MedicalRecord } from '../models/medical-record.model';
@@ -19,15 +24,16 @@ export class PetService {
     const cached = this.cachedPets();
     if (cached) return of(cached);
 
-    return this.http.get<Pet[]>(this.baseUrl()).pipe(
-      map((list) => {
-        const safe = Array.isArray(list) ? list : [];
+    const params = new HttpParams().set('page', '1').set('pageSize', String(LIST_PAGE_SIZE));
+
+    return this.http.get<PaginatedResponse<Pet> | Pet[]>(this.baseUrl(), { params }).pipe(
+      map((body) => {
+        const safe = unwrapPaginatedList<Pet>(body);
         this.cachedPets.set(safe);
         return safe;
       }),
       catchError((err) => {
         console.warn('[PetService] Falha ao listar pets:', err);
-        // Evita cachear erro como lista vazia permanente.
         return of([]);
       })
     );
@@ -66,7 +72,6 @@ export class PetService {
     return this.http.get<Pet & { appointments?: Appointment[]; medicalRecords?: MedicalRecord[] }>(url).pipe(
       catchError((err) => {
         console.warn('[PetService] Falha ao carregar pet:', err);
-        // Retorna um shape minimamente seguro para não quebrar a UI.
         return of({
           id,
           name: '—',
@@ -83,4 +88,3 @@ export class PetService {
     );
   }
 }
-

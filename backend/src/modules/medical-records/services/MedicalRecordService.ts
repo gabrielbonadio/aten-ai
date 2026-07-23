@@ -71,10 +71,15 @@ class MedicalRecordService {
     return record;
   }
 
-  async findAll(tenantId: number): Promise<MedicalRecord[]> {
-    return MedicalRecord.findAll({
+  async findAll(
+    tenantId: number,
+    pagination: { limit: number; offset: number }
+  ): Promise<{ rows: MedicalRecord[]; count: number }> {
+    return MedicalRecord.findAndCountAll({
       where: { tenantId },
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit: pagination.limit,
+      offset: pagination.offset
     });
   }
 

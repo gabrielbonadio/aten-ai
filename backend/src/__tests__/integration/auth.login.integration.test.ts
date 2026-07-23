@@ -54,6 +54,7 @@ describe('POST /auth/login (integration)', () => {
       .expect(200);
 
     expect(response.body.token).toEqual(expect.any(String));
+    expect(response.body.refreshToken).toEqual(expect.any(String));
     expect(response.body.user.email).toBe(userTenantA.email);
     expect(response.body.tenant.id).toBe(tenantA.id);
   });

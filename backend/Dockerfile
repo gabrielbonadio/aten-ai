@@ -33,6 +33,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN addgroup -g 1001 -S nodejs \
+  && adduser -S -u 1001 -G nodejs nodejs
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm install sequelize-cli --no-save --omit=dev
 
@@ -42,7 +45,10 @@ COPY migrations ./migrations
 COPY .sequelizerc ./.sequelizerc
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN chmod +x docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh \
+  && chown -R nodejs:nodejs /app
+
+USER nodejs
 
 EXPOSE 3000
 

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import authService from '../../../modules/auth/services/AuthService';
 import userRepository from '../../../modules/auth/repositories/UserRepository';
 import tenantRepository from '../../../modules/tenants/repositories/TenantRepository';
+import userTokenRepository from '../../../modules/auth/repositories/UserTokenRepository';
 import { tenantA, userTenantA } from '../../helpers/fixtures';
 
 jest.mock('../../../modules/auth/repositories/UserRepository', () => ({
@@ -32,27 +33,30 @@ jest.mock('bcryptjs', () => ({
 
 const mockedUserRepository = userRepository as jest.Mocked<typeof userRepository>;
 const mockedTenantRepository = tenantRepository as jest.Mocked<typeof tenantRepository>;
+const mockedUserTokenRepository = userTokenRepository as jest.Mocked<typeof userTokenRepository>;
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
 describe('AuthService.login (unit)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedUserTokenRepository.create.mockResolvedValue({ id: 'refresh-id' } as never);
   });
 
-  it('autentica com credenciais válidas e retorna token + usuário + tenant', async () => {
+  it('autentica com credenciais válidas e retorna token + refreshToken + usuário + tenant', async () => {
     mockedUserRepository.findByEmail.mockResolvedValue(userTenantA as never);
     mockedBcrypt.compare.mockResolvedValue(true as never);
     mockedTenantRepository.findById.mockResolvedValue(tenantA as never);
 
     const result = await authService.login({
       email: userTenantA.email,
-      password: 'SenhaSegura123'
+      password: 'SenhaSegura@123'
     });
 
     expect(mockedUserRepository.findByEmail).toHaveBeenCalledWith(userTenantA.email);
-    expect(mockedBcrypt.compare).toHaveBeenCalledWith('SenhaSegura123', userTenantA.password_hash);
+    expect(mockedBcrypt.compare).toHaveBeenCalledWith('SenhaSegura@123', userTenantA.password_hash);
     expect(mockedTenantRepository.findById).toHaveBeenCalledWith(userTenantA.tenantId);
     expect(result.token).toEqual(expect.any(String));
+    expect(result.refreshToken).toEqual(expect.any(String));
     expect(result.user).toMatchObject({
       id: userTenantA.id,
       email: userTenantA.email,
@@ -75,8 +79,9 @@ describe('AuthService.login (unit)', () => {
     expect(mockedTenantRepository.findById).not.toHaveBeenCalled();
   });
 
-  it('rejeita usuário inexistente com UnauthorizedError', async () => {
+  it('rejeita usuário inexistente com UnauthorizedError e ainda compara hash (timing)', async () => {
     mockedUserRepository.findByEmail.mockResolvedValue(null);
+    mockedBcrypt.compare.mockResolvedValue(false as never);
 
     await expect(
       authService.login({
@@ -85,6 +90,7 @@ describe('AuthService.login (unit)', () => {
       })
     ).rejects.toMatchObject({ statusCode: 401, message: expect.stringMatching(/credenciais inválidas/i) });
 
-    expect(mockedBcrypt.compare).not.toHaveBeenCalled();
+    expect(mockedBcrypt.compare).toHaveBeenCalled();
+    expect(mockedTenantRepository.findById).not.toHaveBeenCalled();
   });
 });

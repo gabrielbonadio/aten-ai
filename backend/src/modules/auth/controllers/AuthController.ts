@@ -26,6 +26,18 @@ class AuthController {
     res.status(204).send();
   }
 
+  async refresh(req: Request, res: Response): Promise<void> {
+    const { refreshToken } = req.body as { refreshToken: string };
+    const result = await authService.refresh(refreshToken);
+    res.status(200).json(result);
+  }
+
+  async logout(req: Request, res: Response): Promise<void> {
+    const { refreshToken } = req.body as { refreshToken: string };
+    await authService.logout(refreshToken);
+    res.status(204).send();
+  }
+
   /** Dados do usuário autenticado (nome, e-mail, papel) para o portal. */
   async me(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {

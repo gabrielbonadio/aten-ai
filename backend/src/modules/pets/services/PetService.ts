@@ -36,10 +36,16 @@ class PetService {
     });
   }
 
-  async findAll(tenantId: number): Promise<Pet[]> {
-    return Pet.findAll({
+  async findAll(
+    tenantId: number,
+    pagination: { limit: number; offset: number }
+  ): Promise<{ rows: Pet[]; count: number }> {
+    return Pet.findAndCountAll({
       where: { tenantId },
       order: [['createdAt', 'DESC']],
+      limit: pagination.limit,
+      offset: pagination.offset,
+      distinct: true,
       include: [
         {
           model: Tutor,

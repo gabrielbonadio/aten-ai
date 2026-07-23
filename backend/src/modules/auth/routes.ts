@@ -1,8 +1,19 @@
 import { Router } from 'express';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticated';
+import {
+  authRateLimiter,
+  passwordResetRateLimiter
+} from '../../shared/middlewares/rateLimit';
 import AuthController from './controllers/AuthController';
-import { forgotPasswordSchema, loginSchema, resetPasswordSchema, signUpSchema } from './schemas/auth.schema';
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  logoutSchema,
+  refreshTokenSchema,
+  resetPasswordSchema,
+  signUpSchema
+} from './schemas/auth.schema';
 
 const authRoutes = Router();
 
@@ -40,10 +51,10 @@ const authRoutes = Router();
  *                 minLength: 8
  *                 maxLength: 128
  *                 format: password
- *                 example: "SenhaSegura123"
+ *                 example: "SenhaSegura@123"
  *     responses:
  *       201:
- *         description: Conta criada com sucesso; retorna JWT e dados do usuário e tenant
+ *         description: Conta criada com sucesso; retorna JWT, refreshToken e dados do usuário e tenant
  *         content:
  *           application/json:
  *             schema:
@@ -51,7 +62,10 @@ const authRoutes = Router();
  *               properties:
  *                 token:
  *                   type: string
- *                   description: JWT para uso em Authorization Bearer
+ *                   description: JWT (access) para uso em Authorization Bearer
+ *                 refreshToken:
+ *                   type: string
+ *                   description: Token opaco de longa duração para /auth/refresh
  *                 user:
  *                   type: object
  *                   properties:
@@ -81,7 +95,12 @@ const authRoutes = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRoutes.post('/auth/signup', validateSchema(signUpSchema), AuthController.signUp);
+authRoutes.post(
+  '/auth/signup',
+  authRateLimiter,
+  validateSchema(signUpSchema),
+  AuthController.signUp
+);
 
 /**
  * @openapi
@@ -89,7 +108,7 @@ authRoutes.post('/auth/signup', validateSchema(signUpSchema), AuthController.sig
  *   post:
  *     tags: [Auth]
  *     summary: Login com e-mail e senha
- *     description: Autentica o usuário e retorna um JWT com id, role e tenantId.
+ *     description: Autentica o usuário e retorna access JWT + refreshToken.
  *     requestBody:
  *       required: true
  *       content:
@@ -105,45 +124,21 @@ authRoutes.post('/auth/signup', validateSchema(signUpSchema), AuthController.sig
  *               password:
  *                 type: string
  *                 format: password
- *                 example: "SenhaSegura123"
+ *                 example: "SenhaSegura@123"
  *     responses:
  *       200:
  *         description: Login bem-sucedido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 user:
- *                   type: object
- *                   properties:
- *                     id: { type: string, format: uuid }
- *                     name: { type: string }
- *                     email: { type: string }
- *                     role: { type: string }
- *                     tenantId: { type: number }
- *                 tenant:
- *                   type: object
- *                   properties:
- *                     id: { type: number }
- *                     name: { type: string }
- *                     slug: { type: string }
  *       400:
  *         description: Erro de validação (Joi)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
  *       401:
  *         description: Credenciais inválidas
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRoutes.post('/auth/login', validateSchema(loginSchema), AuthController.login);
+authRoutes.post(
+  '/auth/login',
+  authRateLimiter,
+  validateSchema(loginSchema),
+  AuthController.login
+);
 
 /**
  * @openapi
@@ -152,29 +147,13 @@ authRoutes.post('/auth/login', validateSchema(loginSchema), AuthController.login
  *     tags: [Auth]
  *     summary: Solicitar recuperação de senha
  *     description: Sempre retorna sucesso (evita vazamento se o e-mail existe ou não).
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email]
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "maria@empresa.com"
- *     responses:
- *       204:
- *         description: Solicitação processada (silenciosa)
- *       400:
- *         description: Erro de validação (Joi)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRoutes.post('/auth/forgot-password', validateSchema(forgotPasswordSchema), AuthController.forgotPassword);
+authRoutes.post(
+  '/auth/forgot-password',
+  passwordResetRateLimiter,
+  validateSchema(forgotPasswordSchema),
+  AuthController.forgotPassword
+);
 
 /**
  * @openapi
@@ -182,32 +161,42 @@ authRoutes.post('/auth/forgot-password', validateSchema(forgotPasswordSchema), A
  *   post:
  *     tags: [Auth]
  *     summary: Redefinir senha usando token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [token, password]
- *             properties:
- *               token:
- *                 type: string
- *                 example: "e3b0c44298fc1c149afbf4c8996fb924..."
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "NovaSenha@123"
- *     responses:
- *       204:
- *         description: Senha redefinida com sucesso
- *       400:
- *         description: Token inválido/expirado ou erro de validação
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRoutes.post('/auth/reset-password', validateSchema(resetPasswordSchema), AuthController.resetPassword);
+authRoutes.post(
+  '/auth/reset-password',
+  passwordResetRateLimiter,
+  validateSchema(resetPasswordSchema),
+  AuthController.resetPassword
+);
+
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Renovar access token com refresh token (rotação)
+ */
+authRoutes.post(
+  '/auth/refresh',
+  authRateLimiter,
+  validateSchema(refreshTokenSchema),
+  AuthController.refresh
+);
+
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Revogar refresh token (logout server-side)
+ */
+authRoutes.post(
+  '/auth/logout',
+  authRateLimiter,
+  validateSchema(logoutSchema),
+  AuthController.logout
+);
+
 authRoutes.get('/auth/me', ensureAuthenticated, AuthController.me);
 
 export default authRoutes;

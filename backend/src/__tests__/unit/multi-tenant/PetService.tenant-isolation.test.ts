@@ -15,6 +15,7 @@ jest.mock('../../../modules/pets/models/Pet', () => ({
   default: {
     findOne: jest.fn(),
     findAll: jest.fn(),
+    findAndCountAll: jest.fn(),
     create: jest.fn(),
     destroy: jest.fn()
   }

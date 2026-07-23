@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
+import { buildPaginatedResult, parsePagination } from '../../../shared/utils/pagination';
 import petService from '../services/PetService';
 
 function resolveTenantId(req: Request): number {
@@ -13,8 +14,9 @@ function resolveTenantId(req: Request): number {
 class PetController {
   async index(req: Request, res: Response): Promise<void> {
     const tenantId = resolveTenantId(req);
-    const pets = await petService.findAll(tenantId);
-    res.status(200).json(pets);
+    const { page, pageSize, limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const { rows, count } = await petService.findAll(tenantId, { limit, offset });
+    res.status(200).json(buildPaginatedResult(rows, count, page, pageSize));
   }
 
   async store(req: Request, res: Response): Promise<void> {

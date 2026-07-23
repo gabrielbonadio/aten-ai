@@ -1,9 +1,11 @@
 import Joi from 'joi';
+import { paginationQuerySchema } from '../../../shared/schemas/pagination.schema';
 
-/** Query string para GET /tutors — busca por nome ou e-mail (opcional). */
+/** Query string para GET /tutors — busca por nome ou e-mail (opcional) + paginação. */
 export const listTutorsQuerySchema = Joi.object({
   search: Joi.string().trim().max(255).allow(''),
-  q: Joi.string().trim().max(255).allow('')
+  q: Joi.string().trim().max(255).allow(''),
+  ...paginationQuerySchema
 });
 
 export const createTutorSchema = Joi.object({

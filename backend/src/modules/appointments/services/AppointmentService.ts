@@ -76,7 +76,11 @@ class AppointmentService {
     return appointment;
   }
 
-  async findAll(tenantId: number, filters: ListAppointmentsFilters): Promise<Appointment[]> {
+  async findAll(
+    tenantId: number,
+    filters: ListAppointmentsFilters,
+    pagination: { limit: number; offset: number }
+  ): Promise<{ rows: Appointment[]; count: number }> {
     const and: unknown[] = [{ tenantId }];
 
     if (filters.status) and.push({ status: filters.status });
@@ -92,9 +96,12 @@ class AppointmentService {
 
     const finalWhere = { [Op.and]: and };
 
-    return Appointment.findAll({
+    return Appointment.findAndCountAll({
       where: finalWhere,
       order: [['date', 'ASC']],
+      limit: pagination.limit,
+      offset: pagination.offset,
+      distinct: true,
       include: [
         {
           model: Pet,

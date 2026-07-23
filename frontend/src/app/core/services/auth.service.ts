@@ -16,6 +16,7 @@ export interface CurrentUser {
 
 export interface AuthResponse {
   token: string;
+  refreshToken: string;
   user: CurrentUser;
   tenant?: {
     id: number;
@@ -39,6 +40,7 @@ export interface LoginPayload {
 /** Chave principal (comum em tutoriais); mantemos compatibilidade com a chave antiga. */
 const STORAGE_KEY_PRIMARY = 'token';
 const STORAGE_KEY_LEGACY = 'aten-ai.access_token';
+const STORAGE_KEY_REFRESH = 'aten-ai.refresh_token';
 const STORAGE_KEY_USER = 'user_data';
 
 @Injectable({ providedIn: 'root' })
@@ -53,26 +55,39 @@ export class AuthService {
     return environment.apiUrl.replace(/\/$/, '');
   }
 
+  private persistSession(response: AuthResponse): void {
+    this.setToken(response.token);
+    this.setRefreshToken(response.refreshToken);
+    this.setUserData(response.user);
+    this.loggedIn.next(true);
+  }
+
   /** Cadastro multi-tenant: cria clínica + admin e salva a sessão. */
   signUp(payload: SignUpPayload): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiBase()}/auth/signup`, payload).pipe(
-      tap((response) => {
-        this.setToken(response.token);
-        this.setUserData(response.user);
-        this.loggedIn.next(true);
-      })
+      tap((response) => this.persistSession(response))
     );
   }
 
   /** Realiza o login e salva os dados na sessão. */
   login(credentials: LoginPayload): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiBase()}/auth/login`, credentials).pipe(
-      tap((response) => {
-        this.setToken(response.token);
-        this.setUserData(response.user);
-        this.loggedIn.next(true);
-      })
+      tap((response) => this.persistSession(response))
     );
+  }
+
+  /**
+   * Renova access + refresh tokens (rotação no servidor).
+   * Usado pelo interceptor em 401.
+   */
+  refresh(): Observable<AuthResponse> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('Refresh token ausente.');
+    }
+    return this.http
+      .post<AuthResponse>(`${this.apiBase()}/auth/refresh`, { refreshToken })
+      .pipe(tap((response) => this.persistSession(response)));
   }
 
   /**
@@ -89,13 +104,22 @@ export class AuthService {
   }
 
   /**
-   * Desloga o usuário limpando o storage e o estado.
+   * Desloga o usuário: limpa storage local e tenta revogar o refresh no servidor.
    * @param options.reason `session_expired` grava aviso para a tela de login.
    */
   logout(options?: { reason?: LogoutReason }): void {
+    const refreshToken = this.getRefreshToken();
     this.clearToken();
     this.loggedIn.next(false);
     setAuthNotice(options?.reason === 'session_expired' ? 'session_expired' : 'manual');
+
+    if (refreshToken) {
+      this.http.post<void>(`${this.apiBase()}/auth/logout`, { refreshToken }).subscribe({
+        error: () => {
+          // Revogação best-effort — sessão local já foi limpa.
+        }
+      });
+    }
   }
 
   /** Dados do profissional logado (nome para receituário, etc.). */
@@ -121,11 +145,29 @@ export class AuthService {
     return null;
   }
 
+  getRefreshToken(): string | null {
+    try {
+      const value = localStorage.getItem(STORAGE_KEY_REFRESH);
+      return value?.trim() ? value.trim() : null;
+    } catch {
+      return null;
+    }
+  }
+
   setToken(token: string): void {
     const v = token.trim();
     try {
       localStorage.setItem(STORAGE_KEY_PRIMARY, v);
       localStorage.setItem(STORAGE_KEY_LEGACY, v);
+    } catch {
+      // ignore
+    }
+  }
+
+  setRefreshToken(refreshToken: string): void {
+    const v = refreshToken.trim();
+    try {
+      localStorage.setItem(STORAGE_KEY_REFRESH, v);
     } catch {
       // ignore
     }
@@ -143,6 +185,7 @@ export class AuthService {
     try {
       localStorage.removeItem(STORAGE_KEY_PRIMARY);
       localStorage.removeItem(STORAGE_KEY_LEGACY);
+      localStorage.removeItem(STORAGE_KEY_REFRESH);
       localStorage.removeItem(STORAGE_KEY_USER);
     } catch {
       // ignore

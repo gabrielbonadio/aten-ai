@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
+import { buildPaginatedResult, parsePagination } from '../../../shared/utils/pagination';
 import medicalRecordService from '../services/MedicalRecordService';
 
 function resolveTenantId(req: Request): number {
@@ -19,8 +20,9 @@ function resolveUserId(req: Request): string {
 class MedicalRecordController {
   async index(req: Request, res: Response): Promise<void> {
     const tenantId = resolveTenantId(req);
-    const records = await medicalRecordService.findAll(tenantId);
-    res.status(200).json(records);
+    const { page, pageSize, limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const { rows, count } = await medicalRecordService.findAll(tenantId, { limit, offset });
+    res.status(200).json(buildPaginatedResult(rows, count, page, pageSize));
   }
 
   async store(req: Request, res: Response): Promise<void> {

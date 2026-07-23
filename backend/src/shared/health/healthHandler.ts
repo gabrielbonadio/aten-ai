@@ -21,6 +21,7 @@ export type HealthResponse = {
  * Health check com verificação real do MySQL.
  * - 200: banco acessível
  * - 503: API no ar, mas banco indisponível (útil para orquestradores / load balancers)
+ * Detalhes do driver MySQL nunca vão na resposta pública.
  */
 export async function healthHandler(_req: Request, res: Response): Promise<void> {
   const started = Date.now();
@@ -34,8 +35,11 @@ export async function healthHandler(_req: Request, res: Response): Promise<void>
     dbStatus = 'up';
   } catch (err) {
     latencyMs = Date.now() - started;
-    dbError = err instanceof Error ? err.message : 'database_unreachable';
-    logger.error('health.database_down', { error: dbError, latencyMs });
+    dbError = 'database_unreachable';
+    logger.error('health.database_down', {
+      error: err instanceof Error ? err.message : String(err),
+      latencyMs
+    });
   }
 
   const payload: HealthResponse = {

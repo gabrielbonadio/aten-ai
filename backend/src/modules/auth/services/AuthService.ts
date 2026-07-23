@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import sequelize from '../../../config/database';
 import { AppError, ConflictError, UnauthorizedError } from '../../../shared/errors/AppError';
+import { logger } from '../../../shared/logging/logger';
 import type { IMailProvider } from '../../../shared/providers/MailProvider/IMailProvider';
 import { ResendMailProvider } from '../../../shared/providers/MailProvider/ResendMailProvider';
 import { signAccessToken } from '../../../shared/utils/jwt';
@@ -12,7 +13,24 @@ import type User from '../models/User';
 
 const BCRYPT_SALT_ROUNDS = 12;
 const RESET_TOKEN_BYTES = 32;
+const REFRESH_TOKEN_BYTES = 48;
 const RESET_TOKEN_TTL_MS = 2 * 60 * 60 * 1000; // 2 horas
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+
+/** Hash fixo só para equalizar timing quando o e-mail não existe (bcrypt de string dummy). */
+const DUMMY_PASSWORD_HASH =
+  '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIeWEgxdqO';
+
+function hashOpaqueToken(raw: string): string {
+  return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  if (!domain) return '***';
+  const safeLocal = local.length <= 2 ? '*'.repeat(local.length) : `${local[0]}***${local[local.length - 1]}`;
+  return `${safeLocal}@${domain}`;
+}
 
 /** Gera slug único para o tenant a partir do nome informado no cadastro. */
 function generateTenantSlug(displayName: string): string {
@@ -64,6 +82,7 @@ export type TenantView = {
 
 export type AuthResponse = {
   token: string;
+  refreshToken: string;
   user: AuthUserView;
   tenant: TenantView;
 };
@@ -80,6 +99,42 @@ function toUserView(user: User): AuthUserView {
 
 class AuthService {
   constructor(private readonly mailProvider: IMailProvider = new ResendMailProvider()) {}
+
+  private async issueRefreshToken(userId: string): Promise<string> {
+    const raw = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
+    const tokenHash = hashOpaqueToken(raw);
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+    await userTokenRepository.create({
+      token: tokenHash,
+      userId,
+      purpose: 'refresh',
+      expiresAt
+    });
+
+    return raw;
+  }
+
+  private async buildAuthResponse(user: User): Promise<AuthResponse> {
+    const tenant = await tenantRepository.findById(user.tenantId);
+    if (!tenant) {
+      throw new UnauthorizedError('Tenant não encontrado para este usuário.');
+    }
+
+    const token = signAccessToken({
+      id: user.id,
+      role: user.role,
+      tenantId: String(user.tenantId)
+    });
+    const refreshToken = await this.issueRefreshToken(user.id);
+
+    return {
+      token,
+      refreshToken,
+      user: toUserView(user),
+      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug }
+    };
+  }
 
   /**
    * Cadastro multi-tenant: cria Tenant e o primeiro User (ADMIN) na mesma transação.
@@ -124,27 +179,16 @@ class AuthService {
         <p>Bem-vindo ao <strong>Aten AI</strong>. O workspace <strong>${escapeHtml(tenant.name)}</strong> foi criado com sucesso.</p>
         <p>Você já pode acessar a plataforma com o e-mail cadastrado.</p>
       `.trim();
-      await this.mailProvider.sendMail(
-        user.email,
-        'Bem-vindo ao Aten AI',
-        welcomeHtml
-      );
-      console.log('[Mail] E-mail de boas-vindas enviado com sucesso para', user.email);
+      await this.mailProvider.sendMail(user.email, 'Bem-vindo ao Aten AI', welcomeHtml);
+      logger.info('mail.welcome_sent', { email: maskEmail(user.email) });
     } catch (err) {
-      console.error('[Mail] Falha ao enviar e-mail de boas-vindas (cadastro já concluído):', err);
+      logger.error('mail.welcome_failed', {
+        email: maskEmail(user.email),
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
 
-    const token = signAccessToken({
-      id: user.id,
-      role: user.role,
-      tenantId: String(user.tenantId)
-    });
-
-    return {
-      token,
-      user: toUserView(user),
-      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug }
-    };
+    return this.buildAuthResponse(user);
   }
 
   /**
@@ -159,10 +203,17 @@ class AuthService {
     const token = crypto.randomBytes(RESET_TOKEN_BYTES).toString('hex');
     const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
-    await userTokenRepository.create({
-      token,
-      userId: user.id,
-      expiresAt
+    await sequelize.transaction(async (transaction) => {
+      await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'password_reset', { transaction });
+      await userTokenRepository.create(
+        {
+          token,
+          userId: user.id,
+          purpose: 'password_reset',
+          expiresAt
+        },
+        { transaction }
+      );
     });
 
     const frontendBase = (process.env.FRONTEND_URL ?? 'http://localhost:4200').replace(/\/$/, '');
@@ -177,19 +228,22 @@ class AuthService {
         <p>Se você não solicitou, pode ignorar este e-mail.</p>
       `.trim();
       await this.mailProvider.sendMail(user.email, 'Redefinição de senha', html);
-      console.log('[Mail] E-mail de recuperação de senha enviado para', user.email);
+      logger.info('mail.reset_sent', { email: maskEmail(user.email) });
     } catch (err) {
-      console.error('[Mail] Falha ao enviar e-mail de recuperação (token já gerado):', err);
+      logger.error('mail.reset_failed', {
+        email: maskEmail(user.email),
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
   }
 
   async resetPassword(token: string, password: string): Promise<void> {
-    const tokenRow = await userTokenRepository.findByToken(token);
+    const tokenRow = await userTokenRepository.findByToken(token, 'password_reset');
     if (!tokenRow || tokenRow.expiresAt.getTime() <= Date.now()) {
       throw new AppError('Token inválido ou expirado', 400);
     }
 
-    // A troca de senha e invalidação do token devem ser atômicas.
+    // A troca de senha invalida o token usado e todas as sessões (refresh).
     await sequelize.transaction(async (transaction) => {
       const user = await userRepository.findById(tokenRow.userId, { transaction });
       if (!user) {
@@ -200,6 +254,7 @@ class AuthService {
       await userRepository.updatePasswordHash(user.id, password_hash, { transaction });
 
       await userTokenRepository.deleteById(tokenRow.id, { transaction });
+      await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'refresh', { transaction });
     });
   }
 
@@ -207,31 +262,44 @@ class AuthService {
     const email = input.email.trim().toLowerCase();
     const user = await userRepository.findByEmail(email);
 
+    // Dummy compare equaliza o tempo de resposta quando o e-mail não existe.
+    const hashToCompare = user?.password_hash ?? DUMMY_PASSWORD_HASH;
+    const match = await bcrypt.compare(input.password, hashToCompare);
+
+    if (!user || !match) {
+      throw new UnauthorizedError('Credenciais inválidas.');
+    }
+
+    return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Troca refresh token (rotação): invalida o atual e emite access + refresh novos.
+   */
+  async refresh(refreshTokenRaw: string): Promise<AuthResponse> {
+    const tokenHash = hashOpaqueToken(refreshTokenRaw);
+    const tokenRow = await userTokenRepository.findByToken(tokenHash, 'refresh');
+
+    if (!tokenRow || tokenRow.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedError('Refresh token inválido ou expirado.');
+    }
+
+    const user = await userRepository.findById(tokenRow.userId);
     if (!user) {
-      throw new UnauthorizedError('Credenciais inválidas.');
+      throw new UnauthorizedError('Refresh token inválido ou expirado.');
     }
 
-    const match = await bcrypt.compare(input.password, user.password_hash);
-    if (!match) {
-      throw new UnauthorizedError('Credenciais inválidas.');
+    await userTokenRepository.deleteById(tokenRow.id);
+    return this.buildAuthResponse(user);
+  }
+
+  /** Revoga um refresh token (logout). Idempotente. */
+  async logout(refreshTokenRaw: string): Promise<void> {
+    const tokenHash = hashOpaqueToken(refreshTokenRaw);
+    const tokenRow = await userTokenRepository.findByToken(tokenHash, 'refresh');
+    if (tokenRow) {
+      await userTokenRepository.deleteById(tokenRow.id);
     }
-
-    const token = signAccessToken({
-      id: user.id,
-      role: user.role,
-      tenantId: String(user.tenantId)
-    });
-
-    const tenant = await tenantRepository.findById(user.tenantId);
-    if (!tenant) {
-      throw new UnauthorizedError('Tenant não encontrado para este usuário.');
-    }
-
-    return {
-      token,
-      user: toUserView(user),
-      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug }
-    };
   }
 }
 

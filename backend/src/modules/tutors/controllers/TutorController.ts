@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
+import { buildPaginatedResult, parsePagination } from '../../../shared/utils/pagination';
 import tutorService from '../services/TutorService';
 
 function resolveTenantId(req: Request): number {
@@ -11,7 +12,7 @@ function resolveTenantId(req: Request): number {
 }
 
 class TutorController {
-  /** GET /tutors — lista com filtro opcional ?search= (nome ou e-mail). */
+  /** GET /tutors — lista com filtro opcional ?search= (nome ou e-mail) + paginação. */
   async findAll(req: Request, res: Response): Promise<void> {
     const tenantId = resolveTenantId(req);
     const search =
@@ -20,8 +21,9 @@ class TutorController {
         : typeof req.query.q === 'string'
           ? req.query.q
           : undefined;
-    const tutors = await tutorService.findAll(tenantId, { search });
-    res.status(200).json(tutors);
+    const { page, pageSize, limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const { rows, count } = await tutorService.findAll(tenantId, { search, limit, offset });
+    res.status(200).json(buildPaginatedResult(rows, count, page, pageSize));
   }
 
   /** GET /tutors/:id — detalhe com pets. */

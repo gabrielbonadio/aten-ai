@@ -1,9 +1,12 @@
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, Sequelize } from 'sequelize';
 
+export type UserTokenPurpose = 'password_reset' | 'refresh';
+
 class UserToken extends Model<InferAttributes<UserToken>, InferCreationAttributes<UserToken>> {
   declare id: CreationOptional<string>;
   declare token: string;
   declare userId: string;
+  declare purpose: CreationOptional<UserTokenPurpose>;
   declare expiresAt: Date;
 
   declare createdAt: CreationOptional<Date>;
@@ -28,6 +31,11 @@ class UserToken extends Model<InferAttributes<UserToken>, InferCreationAttribute
           type: DataTypes.UUID,
           allowNull: false
         },
+        purpose: {
+          type: DataTypes.ENUM('password_reset', 'refresh'),
+          allowNull: false,
+          defaultValue: 'password_reset'
+        },
         expiresAt: {
           type: DataTypes.DATE,
           allowNull: false
@@ -43,7 +51,8 @@ class UserToken extends Model<InferAttributes<UserToken>, InferCreationAttribute
         paranoid: true,
         indexes: [
           { unique: true, fields: ['token'], name: 'user_tokens_token_unique' },
-          { fields: ['userId'], name: 'user_tokens_user_id_idx' }
+          { fields: ['userId'], name: 'user_tokens_user_id_idx' },
+          { fields: ['userId', 'purpose'], name: 'user_tokens_user_id_purpose_idx' }
         ]
       }
     );
@@ -53,4 +62,3 @@ class UserToken extends Model<InferAttributes<UserToken>, InferCreationAttribute
 }
 
 export default UserToken;
-

@@ -4,12 +4,12 @@ services:
     container_name: aten-ai-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_NAME:-aten_ai_db}
-      MYSQL_USER: ${DB_USER:-aten_ai}
-      MYSQL_PASSWORD: ${DB_PASS:-aten_ai_pass}
-    ports:
-      - "${MYSQL_HOST_PORT:-3306}:3306"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no .env}
+      MYSQL_DATABASE: ${DB_NAME:?Defina DB_NAME no .env}
+      MYSQL_USER: ${DB_USER:?Defina DB_USER no .env}
+      MYSQL_PASSWORD: ${DB_PASS:?Defina DB_PASS no .env}
+    # Porta 3306 NÃO é publicada no host — apenas rede interna do Compose.
+    # Para debug local, adicione temporariamente: ports: ["127.0.0.1:3306:3306"]
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -18,6 +18,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 25s
+    networks:
+      - aten-internal
 
   backend:
     build:
@@ -33,33 +35,43 @@ services:
       PORT: 3000
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: ${DB_USER:-aten_ai}
-      DB_PASS: ${DB_PASS:-aten_ai_pass}
-      DB_NAME: ${DB_NAME:-aten_ai_db}
-      JWT_SECRET: ${JWT_SECRET:-change-me-use-a-long-random-string}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      DB_USER: ${DB_USER:?Defina DB_USER no .env}
+      DB_PASS: ${DB_PASS:?Defina DB_PASS no .env}
+      DB_NAME: ${DB_NAME:?Defina DB_NAME no .env}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET (>=32 chars) no .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      ENABLE_IN_PROCESS_JOBS: ${ENABLE_IN_PROCESS_JOBS:-true}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:?Defina FRONTEND_URL no .env}
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
-      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET:-change-me}
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET:?Defina N8N_WEBHOOK_SECRET no .env}
       N8N_MEDICAL_RECORD_WEBHOOK_URL: ${N8N_MEDICAL_RECORD_WEBHOOK_URL:-}
       N8N_MEDICAL_RECORD_WEBHOOK_API_KEY: ${N8N_MEDICAL_RECORD_WEBHOOK_API_KEY:-}
     ports:
       - "${BACKEND_HOST_PORT:-3000}:3000"
+    networks:
+      - aten-internal
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        API_URL: ${API_URL:-http://localhost:3000}
+        API_URL: ${API_URL:?Defina API_URL no .env}
     container_name: aten-ai-frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
       - "${FRONTEND_HOST_PORT:-8080}:80"
+    networks:
+      - aten-internal
 
 volumes:
   mysql_data:
+
+networks:
+  aten-internal:
+    driver: bridge

@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { paginationQuerySchema } from '../../../shared/schemas/pagination.schema';
 
 export const createAppointmentSchema = Joi.object({
   petId: Joi.string().uuid().required(),
@@ -11,7 +12,8 @@ export const createAppointmentSchema = Joi.object({
 export const listAppointmentsSchema = Joi.object({
   status: Joi.string().valid('SCHEDULED', 'COMPLETED', 'CANCELED').optional(),
   startDate: Joi.date().iso().optional(),
-  endDate: Joi.date().iso().optional()
+  endDate: Joi.date().iso().optional(),
+  ...paginationQuerySchema
 });
 
 export const updateAppointmentStatusSchema = Joi.object({

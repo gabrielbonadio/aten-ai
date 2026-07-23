@@ -3,7 +3,7 @@ import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticate
 import { ensureRole } from '../../shared/middlewares/ensureRole';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import PetController from './controllers/PetController';
-import { createPetSchema, updatePetSchema } from './schemas/pet.schema';
+import { createPetSchema, listPetsQuerySchema, updatePetSchema } from './schemas/pet.schema';
 
 const petsRoutes = Router();
 
@@ -50,7 +50,7 @@ petsRoutes.post('/pets', validateSchema(createPetSchema), PetController.store);
  *     responses:
  *       200: { description: Lista de pets }
  */
-petsRoutes.get('/pets', PetController.index);
+petsRoutes.get('/pets', validateSchema(listPetsQuerySchema, 'query'), PetController.index);
 
 petsRoutes.get('/pets/:id', PetController.show);
 petsRoutes.put('/pets/:id', validateSchema(updatePetSchema), PetController.update);
