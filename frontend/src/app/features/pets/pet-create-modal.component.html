@@ -1,15 +1,23 @@
 @if (open()) {
   <div
-    class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/50 p-4 backdrop-blur-[2px] sm:items-center"
+    class="fixed inset-0 z-50 bg-zinc-900/50"
+    role="presentation"
+    (click)="close()"
+  ></div>
+
+  <div
+    class="pointer-events-none fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
     role="dialog"
     aria-modal="true"
     aria-labelledby="pet-modal-title"
   >
     <div
-      class="max-h-[min(92vh,720px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white shadow-xl shadow-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900"
+      class="pointer-events-auto flex max-h-[min(92vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-xl shadow-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900"
       (click)="$event.stopPropagation()"
     >
-      <div class="flex items-start justify-between gap-4 border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
+      <div
+        class="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100 px-6 py-4 dark:border-zinc-800"
+      >
         <div>
           <h2 id="pet-modal-title" class="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             {{ editingId() ? 'Editar Pet' : 'Novo pet' }}
@@ -28,9 +36,16 @@
         </button>
       </div>
 
-      <form class="space-y-5 px-6 py-5" [formGroup]="form" (ngSubmit)="submit()">
+      <form
+        class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-5"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+        (scroll)="onFormScroll()"
+      >
         <div>
-          <label for="pet-name" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Nome</label>
+          <label for="pet-name" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            >Nome</label
+          >
           <input
             id="pet-name"
             type="text"
@@ -64,7 +79,9 @@
             }
           </div>
           <div>
-            <label for="pet-breed" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Raça</label>
+            <label for="pet-breed" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+              >Raça</label
+            >
             <input
               id="pet-breed"
               type="text"
@@ -88,7 +105,9 @@
             />
           </div>
           <div>
-            <label for="pet-weight" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Peso (kg)</label>
+            <label for="pet-weight" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+              >Peso (kg)</label
+            >
             <input
               id="pet-weight"
               type="number"
@@ -111,6 +130,7 @@
           </label>
           <div class="relative">
             <input
+              #tutorSearchInput
               id="tutor-search"
               type="text"
               role="combobox"
@@ -129,37 +149,6 @@
             <div class="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-zinc-400">
               <lucide-icon name="search" class="h-4 w-4" aria-hidden="true"></lucide-icon>
             </div>
-
-            @if (tutorDropdownOpen() && open()) {
-              <div
-                id="tutor-options"
-                role="listbox"
-                class="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-950"
-              >
-                @if (tutorsLoading()) {
-                  <div class="px-3 py-2.5 text-xs text-zinc-500 dark:text-zinc-400">Carregando tutores…</div>
-                } @else if (filteredTutors().length === 0) {
-                  <div class="px-3 py-2.5 text-sm text-zinc-600 dark:text-zinc-300">
-                    Nenhum tutor encontrado
-                  </div>
-                } @else {
-                  @for (tutor of filteredTutors().slice(0, 30); track tutor.id) {
-                    <button
-                      type="button"
-                      role="option"
-                      class="w-full px-3 py-2.5 text-left hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                      [attr.aria-selected]="form.controls.tutorId.value === tutor.id"
-                      (mousedown)="selectTutor(tutor)"
-                    >
-                      <div class="text-sm font-medium text-zinc-900 dark:text-zinc-50">{{ tutor.name }}</div>
-                      <div class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                        {{ tutor.phone || tutor.email || 'Sem contato' }}
-                      </div>
-                    </button>
-                  }
-                }
-              </div>
-            }
           </div>
           @if (tutorsLoading()) {
             <p class="mt-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -176,7 +165,9 @@
           }
         </div>
 
-        <div class="flex flex-col-reverse gap-2 border-t border-zinc-100 pt-5 dark:border-zinc-800 sm:flex-row sm:justify-end">
+        <div
+          class="flex flex-col-reverse gap-2 border-t border-zinc-100 pt-5 dark:border-zinc-800 sm:flex-row sm:justify-end"
+        >
           <button
             type="button"
             class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-400/40 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -201,4 +192,44 @@
       </form>
     </div>
   </div>
+
+  @if (tutorDropdownOpen()) {
+    <div
+      id="tutor-options"
+      role="listbox"
+      class="pointer-events-auto fixed z-[60] overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-950"
+      [style.top.px]="tutorMenuTop()"
+      [style.left.px]="tutorMenuLeft()"
+      [style.width.px]="tutorMenuWidth()"
+      [style.maxHeight.px]="tutorMenuMaxHeight()"
+    >
+      @if (tutorsLoading()) {
+        <div class="px-3 py-2.5 text-xs text-zinc-500 dark:text-zinc-400">Carregando tutores…</div>
+      } @else if (visibleTutors().length === 0) {
+        <div class="px-3 py-2.5 text-sm text-zinc-600 dark:text-zinc-300">Nenhum tutor encontrado</div>
+      } @else {
+        @for (tutor of visibleTutors(); track tutor.id) {
+          <button
+            type="button"
+            role="option"
+            class="w-full px-3 py-2.5 text-left hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+            [attr.aria-selected]="form.controls.tutorId.value === tutor.id"
+            (mousedown)="selectTutor(tutor)"
+          >
+            <div class="text-sm font-medium text-zinc-900 dark:text-zinc-50">{{ tutor.name }}</div>
+            <div class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              {{ tutor.phone || tutor.email || 'Sem contato' }}
+            </div>
+          </button>
+        }
+        @if (tutorsTruncated()) {
+          <div
+            class="sticky bottom-0 border-t border-zinc-100 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+          >
+            Mostrando 10 de {{ filteredTutors().length }} — refine a busca para ver mais.
+          </div>
+        }
+      }
+    </div>
+  }
 }
