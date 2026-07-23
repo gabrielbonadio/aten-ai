@@ -1,10 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
+import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import type { MedicalRecord } from '../../core/models/medical-record.model';
 import type { Pet } from '../../core/models/pet.model';
-import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { PrescriptionPdfService } from '../../core/services/prescription-pdf.service';
 import { PetService } from '../../core/services/pet.service';
@@ -21,7 +20,7 @@ type PetProfileView = Pet & { medicalRecords?: MedicalRecord[] };
   imports: [
     RouterLink,
     LucideAngularModule,
-    SidebarComponent,
+    ShellMenuButtonComponent,
     PetConsultModalComponent,
     PetMedicalDetailModalComponent
   ],
@@ -35,9 +34,6 @@ export class PetProfileComponent implements OnInit {
   private readonly notify = inject(NotificationService);
   readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly sidebarCollapsed = signal(false);
-  readonly navItems = APP_SIDEBAR_NAV;
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 
@@ -130,10 +126,6 @@ export class PetProfileComponent implements OnInit {
     if (!t) return '—';
     if (t.length <= 140) return t;
     return `${t.slice(0, 140)}…`;
-  }
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleTheme(): void {

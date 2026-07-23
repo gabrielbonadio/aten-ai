@@ -2,9 +2,8 @@ import { NgClass } from '@angular/common';
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
+import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import type { Pet } from '../../core/models/pet.model';
-import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { PetService } from '../../core/services/pet.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
@@ -14,7 +13,7 @@ import { PetCreateModalComponent } from './pet-create-modal.component';
 @Component({
   selector: 'app-pet-list',
   standalone: true,
-  imports: [NgClass, LucideAngularModule, SidebarComponent, PetCreateModalComponent],
+  imports: [NgClass, LucideAngularModule, ShellMenuButtonComponent, PetCreateModalComponent],
   templateUrl: './pet-list.component.html'
 })
 export class PetListComponent implements OnInit {
@@ -23,9 +22,6 @@ export class PetListComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly sidebarCollapsed = signal(false);
-  readonly navItems = APP_SIDEBAR_NAV;
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly pets = signal<Pet[]>([]);
@@ -72,10 +68,6 @@ export class PetListComponent implements OnInit {
     this.editingPetId.set(null);
     this.editingPet.set(null);
     this.loadPets();
-  }
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleTheme(): void {

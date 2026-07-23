@@ -1,9 +1,8 @@
 import { DatePipe, NgClass } from '@angular/common';
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
+import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import type { Appointment } from '../../core/models/appointment.model';
-import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { AppointmentService } from '../../core/services/appointment.service';
 import { ThemeService } from '../../shared/theme/theme.service';
@@ -25,7 +24,7 @@ type AgendaRowView = Appointment & {
     NgClass,
     DatePipe,
     LucideAngularModule,
-    SidebarComponent,
+    ShellMenuButtonComponent,
     AppointmentCreateModalComponent
   ],
   templateUrl: './agenda.component.html'
@@ -35,9 +34,6 @@ export class AgendaComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly sidebarCollapsed = signal(false);
-  readonly navItems = APP_SIDEBAR_NAV;
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 
@@ -112,10 +108,6 @@ export class AgendaComponent implements OnInit {
 
   onCreated(): void {
     this.load();
-  }
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleTheme(): void {

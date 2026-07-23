@@ -24,6 +24,12 @@ export class ClinicBrandingService {
     this.planLabel.set(t.plan === 'pro' ? 'Plano Pro' : 'Plano Free');
   }
 
+  /** Volta aos defaults (ex.: após logout). */
+  reset(): void {
+    this.clinicName.set('Clínica Vet');
+    this.planLabel.set('Plano Free');
+  }
+
   /** Carrega GET /settings e atualiza sinais (ignora erro silenciosamente). */
   refresh(): void {
     if (!this.auth.getToken()) return;

@@ -9,8 +9,7 @@ import {
   Validators
 } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
-import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
+import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { SettingsService } from '../../core/services/settings.service';
 import type { TenantSettings, UpdateTenantSettingsPayload } from '../../core/models/tenant-settings.model';
@@ -34,7 +33,7 @@ function optionalEmailValidator(control: AbstractControl): ValidationErrors | nu
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [NgClass, ReactiveFormsModule, LucideAngularModule, SidebarComponent],
+  imports: [NgClass, ReactiveFormsModule, LucideAngularModule, ShellMenuButtonComponent],
   templateUrl: './settings.component.html'
 })
 export class SettingsComponent implements OnInit {
@@ -43,9 +42,6 @@ export class SettingsComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   readonly brand = inject(ClinicBrandingService);
   readonly theme = inject(ThemeService);
-
-  readonly sidebarCollapsed = signal(false);
-  readonly navItems = APP_SIDEBAR_NAV;
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly loading = signal(true);
@@ -142,10 +138,6 @@ export class SettingsComponent implements OnInit {
     }
     if (typeof body === 'string' && body.trim() && !/<(html|!doctype)/i.test(body)) return body;
     return 'Erro ao conectar com o servidor.';
-  }
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleTheme(): void {

@@ -1,182 +1,174 @@
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-  <div class="flex">
-    <app-sidebar
-      [collapsed]="sidebarCollapsed()"
-      [items]="navItems"
-      (toggle)="toggleSidebar()"
-    />
-
-    <div class="min-w-0 flex-1">
-      <header class="sticky top-0 z-10 border-b border-zinc-200/70 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/60">
-        <div class="flex items-center justify-between gap-4 px-6 py-4">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-              <span class="truncate">Aten-AI</span>
-              <span class="text-zinc-300 dark:text-zinc-700">/</span>
-              <span class="truncate">{{ brand.clinicName() }}</span>
-            </div>
-            <div class="mt-1 flex items-center gap-2">
-              <h1 class="truncate text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-                Configurações
-              </h1>
-              <span
-                class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
-              >
-                {{ brand.planLabel() }}
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            (click)="toggleTheme()"
-          >
-            <lucide-icon [name]="isDark() ? 'sun' : 'moon'" class="h-4 w-4"></lucide-icon>
-            <span class="hidden sm:block">{{ isDark() ? 'Modo claro' : 'Modo escuro' }}</span>
-          </button>
+<header class="sticky top-0 z-10 border-b border-zinc-200/70 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/60">
+  <div class="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <div class="flex min-w-0 items-start gap-3">
+      <app-shell-menu-button class="mt-0.5" />
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <span class="truncate">Aten-AI</span>
+          <span class="text-zinc-300 dark:text-zinc-700">/</span>
+          <span class="truncate">{{ brand.clinicName() }}</span>
         </div>
-      </header>
+        <div class="mt-1 flex items-center gap-2">
+          <h1 class="truncate text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Configurações
+          </h1>
+          <span
+            class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+          >
+            {{ brand.planLabel() }}
+          </span>
+        </div>
+      </div>
+    </div>
 
-      <main class="px-6 py-8">
-        @if (loading()) {
-          <div class="mx-auto max-w-3xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50">
-            <div class="h-6 w-48 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700"></div>
-            <div class="h-10 w-full animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
-            <div class="h-10 w-full animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
-          </div>
-        } @else {
-          <div class="mx-auto max-w-3xl space-y-8">
-            <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-8">
-              <div
-                class="rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50"
+    <button
+      type="button"
+      class="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+      (click)="toggleTheme()"
+      [attr.aria-label]="isDark() ? 'Ativar modo claro' : 'Ativar modo escuro'"
+    >
+      <lucide-icon [name]="isDark() ? 'sun' : 'moon'" class="h-4 w-4" aria-hidden="true"></lucide-icon>
+      <span class="hidden sm:block">{{ isDark() ? 'Modo claro' : 'Modo escuro' }}</span>
+    </button>
+  </div>
+</header>
+
+<main class="px-4 py-8 sm:px-6">
+  @if (loading()) {
+    <div class="mx-auto max-w-3xl space-y-4 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50">
+      <div class="h-6 w-48 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700"></div>
+      <div class="h-10 w-full animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
+      <div class="h-10 w-full animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
+    </div>
+  } @else {
+    <div class="mx-auto max-w-3xl space-y-8">
+      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-8">
+        <div
+          class="rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50"
+        >
+          <h2 class="text-base font-semibold text-zinc-900 dark:text-zinc-50">Dados da clínica</h2>
+          <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Informações exibidas nos relatórios e no contexto do sistema.
+          </p>
+
+          <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label for="clinic-name" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                >Nome da clínica</label
               >
-                <h2 class="text-base font-semibold text-zinc-900 dark:text-zinc-50">Dados da clínica</h2>
-                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  Informações exibidas nos relatórios e no contexto do sistema.
+              <input
+                id="clinic-name"
+                type="text"
+                formControlName="name"
+                autocomplete="organization"
+                class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+              />
+              @if (showFieldError('name')) {
+                <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Informe o nome da clínica.</p>
+              }
+            </div>
+
+            <div>
+              <label for="clinic-doc" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                >CNPJ / CPF</label
+              >
+              <input
+                id="clinic-doc"
+                type="text"
+                formControlName="document"
+                inputmode="numeric"
+                autocomplete="off"
+                class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                (input)="onDocumentInput($event)"
+                placeholder="Opcional"
+              />
+            </div>
+
+            <div>
+              <label for="clinic-email" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                >E-mail de contato</label
+              >
+              <input
+                id="clinic-email"
+                type="email"
+                formControlName="email"
+                autocomplete="email"
+                class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                placeholder="Opcional"
+              />
+              @if (showFieldError('email')) {
+                <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">E-mail inválido.</p>
+              }
+            </div>
+
+            <div>
+              <label for="clinic-phone" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                >Telefone</label
+              >
+              <input
+                id="clinic-phone"
+                type="tel"
+                formControlName="phone"
+                inputmode="tel"
+                autocomplete="tel"
+                class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                (input)="onPhoneInput($event)"
+                placeholder="(00) 00000-0000"
+              />
+              @if (showFieldError('phone')) {
+                <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">
+                  Informe um telefone válido (10 ou 11 dígitos).
                 </p>
+              }
+            </div>
 
-                <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <div class="sm:col-span-2">
-                    <label for="clinic-name" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-                      >Nome da clínica</label
-                    >
-                    <input
-                      id="clinic-name"
-                      type="text"
-                      formControlName="name"
-                      autocomplete="organization"
-                      class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-                    />
-                    @if (showFieldError('name')) {
-                      <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">Informe o nome da clínica.</p>
-                    }
-                  </div>
-
-                  <div>
-                    <label for="clinic-doc" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-                      >CNPJ / CPF</label
-                    >
-                    <input
-                      id="clinic-doc"
-                      type="text"
-                      formControlName="document"
-                      inputmode="numeric"
-                      autocomplete="off"
-                      class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-                      (input)="onDocumentInput($event)"
-                      placeholder="Opcional"
-                    />
-                  </div>
-
-                  <div>
-                    <label for="clinic-email" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-                      >E-mail de contato</label
-                    >
-                    <input
-                      id="clinic-email"
-                      type="email"
-                      formControlName="email"
-                      autocomplete="email"
-                      class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-                      placeholder="Opcional"
-                    />
-                    @if (showFieldError('email')) {
-                      <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">E-mail inválido.</p>
-                    }
-                  </div>
-
-                  <div>
-                    <label for="clinic-phone" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-                      >Telefone</label
-                    >
-                    <input
-                      id="clinic-phone"
-                      type="tel"
-                      formControlName="phone"
-                      inputmode="tel"
-                      autocomplete="tel"
-                      class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-                      (input)="onPhoneInput($event)"
-                      placeholder="(00) 00000-0000"
-                    />
-                    @if (showFieldError('phone')) {
-                      <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">
-                        Informe um telefone válido (10 ou 11 dígitos).
-                      </p>
-                    }
-                  </div>
-
-                  <div class="sm:col-span-2">
-                    <label for="clinic-address" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-                      >Endereço completo</label
-                    >
-                    <textarea
-                      id="clinic-address"
-                      formControlName="address"
-                      rows="3"
-                      class="w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-                      placeholder="Rua, número, bairro, cidade…"
-                    ></textarea>
-                  </div>
-                </div>
-
-                <div class="mt-8 flex flex-col-reverse gap-2 border-t border-zinc-100 pt-6 dark:border-zinc-800 sm:flex-row sm:justify-end">
-                  <button
-                    type="submit"
-                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    [disabled]="saving()"
-                  >
-                    @if (saving()) {
-                      <lucide-icon name="loader" class="h-4 w-4 animate-spin"></lucide-icon>
-                    }
-                    {{ saving() ? 'Salvando…' : 'Salvar alterações' }}
-                  </button>
-                </div>
-              </div>
-            </form>
-
-            <div
-              class="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-6 dark:border-zinc-700 dark:bg-zinc-900/30"
-            >
-              <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-                <div
-                  class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white text-zinc-400 shadow-sm dark:border-zinc-700 dark:bg-zinc-950"
-                >
-                  <lucide-icon name="image" class="h-7 w-7"></lucide-icon>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-50">Logotipo da clínica</h3>
-                  <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    Em breve você poderá enviar o logotipo para exibir no painel e nos documentos. Esta seção é apenas
-                    um placeholder.
-                  </p>
-                </div>
-              </div>
+            <div class="sm:col-span-2">
+              <label for="clinic-address" class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                >Endereço completo</label
+              >
+              <textarea
+                id="clinic-address"
+                formControlName="address"
+                rows="3"
+                class="w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                placeholder="Rua, número, bairro, cidade…"
+              ></textarea>
             </div>
           </div>
-        }
-      </main>
+
+          <div class="mt-8 flex flex-col-reverse gap-2 border-t border-zinc-100 pt-6 dark:border-zinc-800 sm:flex-row sm:justify-end">
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+              [disabled]="saving()"
+            >
+              @if (saving()) {
+                <lucide-icon name="loader" class="h-4 w-4 animate-spin"></lucide-icon>
+              }
+              {{ saving() ? 'Salvando…' : 'Salvar alterações' }}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div
+        class="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-6 dark:border-zinc-700 dark:bg-zinc-900/30"
+      >
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div
+            class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white text-zinc-400 shadow-sm dark:border-zinc-700 dark:bg-zinc-950"
+          >
+            <lucide-icon name="image" class="h-7 w-7"></lucide-icon>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-50">Logotipo da clínica</h3>
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Em breve você poderá enviar o logotipo para exibir no painel e nos documentos. Esta seção é apenas
+              um placeholder.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
+  }
+</main>

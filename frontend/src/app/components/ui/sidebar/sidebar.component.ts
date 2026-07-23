@@ -1,14 +1,20 @@
 import { NgClass } from '@angular/common';
 import { Component, inject, input, output } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ClinicBrandingService } from '../../../core/services/clinic-branding.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 export type SidebarNavItem = {
   label: string;
   route: string;
   /** Nome do ícone Lucide (kebab-case) usado em <lucide-icon [name]="..."> */
   iconName: string;
+  /**
+   * Se false, marca o item ativo também em rotas filhas (ex.: /pets/:id).
+   * Default: true.
+   */
+  exact?: boolean;
 };
 
 @Component({
@@ -17,27 +23,31 @@ export type SidebarNavItem = {
   imports: [NgClass, RouterLink, RouterLinkActive, LucideAngularModule],
   template: `
     <aside
-      class="h-screen shrink-0 border-r border-zinc-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-zinc-800 dark:bg-zinc-950/60"
-      [ngClass]="collapsed() ? 'w-20' : 'w-64'"
+      class="flex h-screen shrink-0 flex-col border-r border-zinc-200/70 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-zinc-800 dark:bg-zinc-950/95"
+      [ngClass]="isVisuallyCollapsed() ? 'w-20' : 'w-64'"
     >
-      <div class="flex h-full flex-col">
+      <div class="flex h-full min-h-0 flex-col">
         <div
           class="py-4"
           [ngClass]="
-            collapsed()
+            isVisuallyCollapsed()
               ? 'flex flex-col items-center gap-3 px-2'
               : 'flex items-center justify-between gap-3 px-4'
           "
         >
           <div
-            [ngClass]="collapsed() ? 'flex flex-col items-center' : 'flex min-w-0 flex-1 items-center gap-3'"
+            [ngClass]="
+              isVisuallyCollapsed()
+                ? 'flex flex-col items-center'
+                : 'flex min-w-0 flex-1 items-center gap-3'
+            "
           >
             <div
               class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
             >
               <span class="text-sm font-semibold">AI</span>
             </div>
-            @if (!collapsed()) {
+            @if (!isVisuallyCollapsed()) {
               <div class="min-w-0">
                 <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">Aten-AI</div>
                 <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ brand.clinicName() }}</div>
@@ -50,28 +60,43 @@ export type SidebarNavItem = {
             type="button"
             class="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             (click)="toggle.emit()"
-            [attr.aria-label]="collapsed() ? 'Expandir sidebar' : 'Recolher sidebar'"
+            [attr.aria-label]="
+              forceExpanded()
+                ? 'Fechar menu'
+                : isVisuallyCollapsed()
+                  ? 'Expandir sidebar'
+                  : 'Recolher sidebar'
+            "
           >
-            @if (collapsed()) {
-              <lucide-icon [name]="'chevron-right'" class="h-4 w-4"></lucide-icon>
+            @if (forceExpanded()) {
+              <lucide-icon name="x" class="h-4 w-4" aria-hidden="true"></lucide-icon>
+            } @else if (isVisuallyCollapsed()) {
+              <lucide-icon name="chevron-right" class="h-4 w-4" aria-hidden="true"></lucide-icon>
             } @else {
-              <lucide-icon [name]="'chevron-left'" class="h-4 w-4"></lucide-icon>
+              <lucide-icon name="chevron-left" class="h-4 w-4" aria-hidden="true"></lucide-icon>
             }
           </button>
         </div>
 
-        <nav class="flex-1 px-2 py-2">
+        <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Navegação principal">
           <div class="space-y-1">
             @for (item of items(); track item.route) {
               <a
                 class="group flex rounded-xl py-2.5 text-sm font-medium text-zinc-700 hover:bg-emerald-50 hover:text-emerald-700 dark:text-zinc-200 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
-                [ngClass]="collapsed() ? 'justify-center px-0' : 'items-center gap-3 px-3'"
+                [ngClass]="isVisuallyCollapsed() ? 'justify-center px-0' : 'items-center gap-3 px-3'"
                 [routerLink]="item.route"
                 routerLinkActive="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                [routerLinkActiveOptions]="{ exact: true }"
+                [routerLinkActiveOptions]="{ exact: item.exact !== false }"
+                [attr.aria-label]="item.label"
+                [attr.title]="isVisuallyCollapsed() ? item.label : null"
+                (click)="navigated.emit()"
               >
-                <lucide-icon [name]="item.iconName" class="h-4 w-4 shrink-0 opacity-80"></lucide-icon>
-                @if (!collapsed()) {
+                <lucide-icon
+                  [name]="item.iconName"
+                  class="h-4 w-4 shrink-0 opacity-80"
+                  aria-hidden="true"
+                ></lucide-icon>
+                @if (!isVisuallyCollapsed()) {
                   <span class="truncate">{{ item.label }}</span>
                 }
               </a>
@@ -79,8 +104,8 @@ export type SidebarNavItem = {
           </div>
         </nav>
 
-        <div class="px-2 pb-4">
-          @if (!collapsed()) {
+        <div class="space-y-2 px-2 pb-4">
+          @if (!isVisuallyCollapsed()) {
             <div
               class="rounded-2xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
             >
@@ -90,14 +115,46 @@ export type SidebarNavItem = {
               </div>
             </div>
           }
+
+          <button
+            type="button"
+            class="flex w-full items-center rounded-xl py-2.5 text-sm font-medium text-zinc-700 hover:bg-red-50 hover:text-red-700 dark:text-zinc-200 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+            [ngClass]="isVisuallyCollapsed() ? 'justify-center px-0' : 'gap-3 px-3'"
+            (click)="onLogout()"
+            [attr.aria-label]="'Sair'"
+            [attr.title]="isVisuallyCollapsed() ? 'Sair' : null"
+          >
+            <lucide-icon name="log-out" class="h-4 w-4 shrink-0 opacity-80" aria-hidden="true"></lucide-icon>
+            @if (!isVisuallyCollapsed()) {
+              <span>Sair</span>
+            }
+          </button>
         </div>
       </div>
     </aside>
   `
 })
 export class SidebarComponent {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   readonly brand = inject(ClinicBrandingService);
+
   readonly collapsed = input.required<boolean>();
   readonly items = input.required<SidebarNavItem[]>();
+  /** No drawer mobile, força largura expandida (ignora collapsed). */
+  readonly forceExpanded = input(false);
+
   readonly toggle = output<void>();
+  readonly navigated = output<void>();
+
+  isVisuallyCollapsed(): boolean {
+    return this.collapsed() && !this.forceExpanded();
+  }
+
+  onLogout(): void {
+    this.brand.reset();
+    this.auth.logout();
+    this.navigated.emit();
+    void this.router.navigateByUrl('/login');
+  }
 }

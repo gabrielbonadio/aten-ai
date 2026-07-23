@@ -1,8 +1,7 @@
 import { NgClass } from '@angular/common';
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
-import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
+import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import type { DashboardMetricsResponse } from '../../core/services/dashboard.service';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { DashboardService } from '../../core/services/dashboard.service';
@@ -18,17 +17,13 @@ type DashboardCardView = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgClass, LucideAngularModule, SidebarComponent, AppointmentCreateModalComponent],
+  imports: [NgClass, LucideAngularModule, ShellMenuButtonComponent, AppointmentCreateModalComponent],
   templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
   private readonly dashboardService = inject(DashboardService);
   readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly sidebarCollapsed = signal(false);
-
-  readonly navItems = APP_SIDEBAR_NAV;
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 
@@ -120,10 +115,6 @@ export class DashboardComponent implements OnInit {
     this.dashboardService.getMetrics().subscribe((m) => {
       this.dashboardData.set(m);
     });
-  }
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleTheme(): void {

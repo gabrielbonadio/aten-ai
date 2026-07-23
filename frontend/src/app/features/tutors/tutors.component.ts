@@ -1,8 +1,7 @@
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { SidebarComponent } from '../../components/ui/sidebar/sidebar.component';
+import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import type { Tutor } from '../../core/models/tutor.model';
-import { APP_SIDEBAR_NAV } from '../../core/navigation/app-sidebar.nav';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { TutorService } from '../../core/services/tutor.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
@@ -12,7 +11,7 @@ import { TutorCreateModalComponent } from './tutor-create-modal.component';
 @Component({
   selector: 'app-tutors',
   standalone: true,
-  imports: [LucideAngularModule, SidebarComponent, TutorCreateModalComponent],
+  imports: [LucideAngularModule, ShellMenuButtonComponent, TutorCreateModalComponent],
   templateUrl: './tutors.component.html'
 })
 export class TutorsComponent implements OnInit {
@@ -20,9 +19,6 @@ export class TutorsComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly sidebarCollapsed = signal(false);
-  readonly navItems = APP_SIDEBAR_NAV;
 
   readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly tutors = signal<Tutor[]>([]);
@@ -122,10 +118,6 @@ export class TutorsComponent implements OnInit {
 
   petCount(tutor: Tutor): number {
     return tutor.pets?.length ?? 0;
-  }
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
   }
 
   toggleTheme(): void {
