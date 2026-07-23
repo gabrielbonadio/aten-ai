@@ -1,16 +1,30 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { mapAuthHttpError } from '../../core/utils/auth-error.util';
 import { consumeAuthNotice } from '../../core/utils/auth-notice.util';
 import { NotificationService } from '../../shared/notifications/notification.service';
+import { AuthPageShellComponent } from '../../shared/ui/auth-page-shell.component';
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_PRIMARY_BTN_CLASS
+} from '../../shared/ui/auth-form.styles';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink,
+    LucideAngularModule,
+    AuthPageShellComponent
+  ],
   templateUrl: './login.component.html'
 })
 export class LoginComponent implements OnInit {
@@ -19,9 +33,14 @@ export class LoginComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly notifications = inject(NotificationService);
 
+  readonly inputClass = AUTH_INPUT_CLASS;
+  readonly labelClass = AUTH_LABEL_CLASS;
+  readonly primaryBtnClass = AUTH_PRIMARY_BTN_CLASS;
+
   loading = false;
   errorMessage: string | null = null;
   sessionNotice: string | null = null;
+  readonly showPassword = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -33,6 +52,10 @@ export class LoginComponent implements OnInit {
       this.sessionNotice = 'Sua sessão expirou. Entre novamente para continuar.';
       this.notifications.warning(this.sessionNotice);
     }
+  }
+
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
   }
 
   submit(): void {
@@ -54,13 +77,8 @@ export class LoginComponent implements OnInit {
         next: () => {
           void this.router.navigateByUrl('/dashboard');
         },
-        error: (err: any) => {
-          // Para login inválido (401), queremos ficar na tela e mostrar feedback.
-          const msg =
-            err?.error?.message ??
-            err?.message ??
-            'Não foi possível entrar. Verifique seu e-mail e senha e tente novamente.';
-          this.errorMessage = String(msg);
+        error: (err: unknown) => {
+          this.errorMessage = mapAuthHttpError(err, 'login');
         }
       });
   }

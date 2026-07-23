@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { lucideAppIconsProviders } from '../../core/providers/lucide-app-icons.provider';
 import { ForgotPasswordComponent } from './forgot-password.component';
 
 describe('ForgotPasswordComponent', () => {
@@ -14,7 +15,7 @@ describe('ForgotPasswordComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [ForgotPasswordComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: authService }]
+      providers: [lucideAppIconsProviders, provideRouter([]), { provide: AuthService, useValue: authService }]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ForgotPasswordComponent);

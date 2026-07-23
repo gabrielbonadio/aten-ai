@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { lucideAppIconsProviders } from '../../core/providers/lucide-app-icons.provider';
 import { ResetPasswordComponent } from './reset-password.component';
 
 describe('ResetPasswordComponent', () => {
@@ -20,6 +21,7 @@ describe('ResetPasswordComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ResetPasswordComponent],
       providers: [
+        lucideAppIconsProviders,
         provideRouter([]),
         { provide: AuthService, useValue: authService },
         {
@@ -89,6 +91,7 @@ describe('ResetPasswordComponent sem token', () => {
     await TestBed.configureTestingModule({
       imports: [ResetPasswordComponent],
       providers: [
+        lucideAppIconsProviders,
         provideRouter([]),
         {
           provide: AuthService,

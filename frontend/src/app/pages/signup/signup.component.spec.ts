@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { lucideAppIconsProviders } from '../../core/providers/lucide-app-icons.provider';
 import { SignupComponent } from './signup.component';
 
 describe('SignupComponent', () => {
@@ -15,7 +16,7 @@ describe('SignupComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [SignupComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: authService }]
+      providers: [lucideAppIconsProviders, provideRouter([]), { provide: AuthService, useValue: authService }]
     }).compileComponents();
 
     fixture = TestBed.createComponent(SignupComponent);

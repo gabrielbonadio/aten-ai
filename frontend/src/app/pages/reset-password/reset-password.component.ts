@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -8,8 +8,16 @@ import {
   Validators
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { LucideAngularModule } from 'lucide-angular';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { mapAuthHttpError } from '../../core/utils/auth-error.util';
+import { AuthPageShellComponent } from '../../shared/ui/auth-page-shell.component';
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_PRIMARY_BTN_CLASS
+} from '../../shared/ui/auth-form.styles';
 
 /** Alinhado ao schema Joi do backend (reset-password). */
 const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
@@ -26,7 +34,13 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink,
+    LucideAngularModule,
+    AuthPageShellComponent
+  ],
   templateUrl: './reset-password.component.html'
 })
 export class ResetPasswordComponent implements OnInit {
@@ -35,10 +49,15 @@ export class ResetPasswordComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
+  readonly inputClass = AUTH_INPUT_CLASS;
+  readonly labelClass = AUTH_LABEL_CLASS;
+  readonly primaryBtnClass = AUTH_PRIMARY_BTN_CLASS;
+
   loading = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
   tokenMissing = false;
+  readonly showPassword = signal(false);
   private resetToken = '';
 
   readonly form = this.fb.nonNullable.group(
@@ -65,6 +84,10 @@ export class ResetPasswordComponent implements OnInit {
       return;
     }
     this.resetToken = token;
+  }
+
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
   }
 
   submit(): void {
@@ -96,12 +119,7 @@ export class ResetPasswordComponent implements OnInit {
           }, 1500);
         },
         error: (err: unknown) => {
-          const httpErr = err as { error?: { message?: string }; message?: string };
-          this.errorMessage = String(
-            httpErr?.error?.message ??
-              httpErr?.message ??
-              'Não foi possível redefinir a senha. O link pode ter expirado.'
-          );
+          this.errorMessage = mapAuthHttpError(err, 'reset');
         }
       });
   }

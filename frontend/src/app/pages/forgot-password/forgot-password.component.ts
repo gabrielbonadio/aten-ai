@@ -4,16 +4,27 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { mapAuthHttpError } from '../../core/utils/auth-error.util';
+import { AuthPageShellComponent } from '../../shared/ui/auth-page-shell.component';
+import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_PRIMARY_BTN_CLASS
+} from '../../shared/ui/auth-form.styles';
 
 @Component({
   selector: 'app-forgot-password',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, AuthPageShellComponent],
   templateUrl: './forgot-password.component.html'
 })
 export class ForgotPasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+
+  readonly inputClass = AUTH_INPUT_CLASS;
+  readonly labelClass = AUTH_LABEL_CLASS;
+  readonly primaryBtnClass = AUTH_PRIMARY_BTN_CLASS;
 
   loading = false;
   errorMessage: string | null = null;
@@ -45,12 +56,7 @@ export class ForgotPasswordComponent {
           this.form.reset({ email: '' });
         },
         error: (err: unknown) => {
-          const httpErr = err as { error?: { message?: string }; message?: string };
-          this.errorMessage = String(
-            httpErr?.error?.message ??
-              httpErr?.message ??
-              'Não foi possível enviar o e-mail. Tente novamente.'
-          );
+          this.errorMessage = mapAuthHttpError(err, 'forgot');
         }
       });
   }

@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { setAuthNotice } from '../../core/utils/auth-notice.util';
 import { NotificationService } from '../../shared/notifications/notification.service';
+import { lucideAppIconsProviders } from '../../core/providers/lucide-app-icons.provider';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
@@ -24,6 +25,7 @@ describe('LoginComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
+        lucideAppIconsProviders,
         provideRouter([]),
         { provide: AuthService, useValue: authService },
         { provide: NotificationService, useValue: notifications }
@@ -117,12 +119,14 @@ describe('LoginComponent', () => {
     component.submit();
     tick();
 
-    expect(component.errorMessage).toBe('Credenciais inválidas.');
+    expect(component.errorMessage).toBe(
+      'E-mail ou senha incorretos. Verifique e tente novamente.'
+    );
     expect(router.navigateByUrl).not.toHaveBeenCalled();
     expect(component.loading).toBeFalse();
 
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('Credenciais inválidas.');
+    expect(compiled.textContent).toContain('E-mail ou senha incorretos');
   }));
 });

@@ -1,104 +1,120 @@
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center px-4 py-10">
-  <div class="w-full max-w-md">
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-8">
-      <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-slate-900">Criar conta</h1>
-        <p class="text-slate-600 mt-1">Cadastre sua clínica e o administrador inicial.</p>
-      </div>
+<app-auth-page-shell>
+  <div class="mb-6">
+    <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Criar conta</h1>
+    <p class="mt-1 text-zinc-600 dark:text-zinc-400">
+      Cadastre sua clínica e o administrador inicial.
+    </p>
+  </div>
 
-      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Nome da clínica</label>
-          <input
-            type="text"
-            formControlName="tenantName"
-            autocomplete="organization"
-            placeholder="Clínica Veterinária Exemplo"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
-          />
-          <p
-            *ngIf="form.controls.tenantName.touched && form.controls.tenantName.invalid"
-            class="mt-1 text-sm text-red-600"
-          >
-            Informe o nome da clínica (mín. 2 caracteres).
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Seu nome</label>
-          <input
-            type="text"
-            formControlName="userName"
-            autocomplete="name"
-            placeholder="Maria Silva"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
-          />
-          <p
-            *ngIf="form.controls.userName.touched && form.controls.userName.invalid"
-            class="mt-1 text-sm text-red-600"
-          >
-            Informe seu nome (mín. 2 caracteres).
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
-          <input
-            type="email"
-            formControlName="email"
-            autocomplete="email"
-            placeholder="voce@clinica.com"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
-          />
-          <p
-            *ngIf="form.controls.email.touched && form.controls.email.invalid"
-            class="mt-1 text-sm text-red-600"
-          >
-            Informe um e-mail válido.
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Senha</label>
-          <input
-            type="password"
-            formControlName="password"
-            autocomplete="new-password"
-            placeholder="Mínimo 8 caracteres"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
-          />
-          <p
-            *ngIf="form.controls.password.touched && form.controls.password.invalid"
-            class="mt-1 text-sm text-red-600"
-          >
-            A senha deve ter pelo menos 8 caracteres.
-          </p>
-        </div>
-
-        <div
-          *ngIf="errorMessage"
-          class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-          role="alert"
-        >
-          {{ errorMessage }}
-        </div>
-
-        <button
-          type="submit"
-          [disabled]="loading"
-          class="w-full rounded-xl bg-slate-900 text-white px-4 py-2.5 font-medium hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition"
-        >
-          <span *ngIf="!loading">Criar conta</span>
-          <span *ngIf="loading">Criando...</span>
-        </button>
-      </form>
-
-      <p class="text-center text-sm text-slate-600 mt-5">
-        Já tem conta?
-        <a routerLink="/login" class="font-medium text-slate-900 underline underline-offset-2 hover:no-underline">
-          Entrar
-        </a>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+    <div>
+      <label [class]="labelClass" for="signup-tenant">Nome da clínica</label>
+      <input
+        id="signup-tenant"
+        type="text"
+        formControlName="tenantName"
+        autocomplete="organization"
+        placeholder="Clínica Veterinária Exemplo"
+        [class]="inputClass"
+      />
+      <p
+        *ngIf="form.controls.tenantName.touched && form.controls.tenantName.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        Informe o nome da clínica (mín. 2 caracteres).
       </p>
     </div>
-  </div>
-</div>
+
+    <div>
+      <label [class]="labelClass" for="signup-name">Seu nome</label>
+      <input
+        id="signup-name"
+        type="text"
+        formControlName="userName"
+        autocomplete="name"
+        placeholder="Maria Silva"
+        [class]="inputClass"
+      />
+      <p
+        *ngIf="form.controls.userName.touched && form.controls.userName.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        Informe seu nome (mín. 2 caracteres).
+      </p>
+    </div>
+
+    <div>
+      <label [class]="labelClass" for="signup-email">E-mail</label>
+      <input
+        id="signup-email"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        spellcheck="false"
+        placeholder="voce@clinica.com"
+        [class]="inputClass"
+      />
+      <p
+        *ngIf="form.controls.email.touched && form.controls.email.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        Informe um e-mail válido.
+      </p>
+    </div>
+
+    <div>
+      <label [class]="labelClass" for="signup-password">Senha</label>
+      <div class="relative">
+        <input
+          id="signup-password"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="new-password"
+          placeholder="Mínimo 8 caracteres"
+          [class]="inputClass + ' pr-11'"
+        />
+        <button
+          type="button"
+          class="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          (click)="togglePassword()"
+          [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+        >
+          <lucide-icon
+            [name]="showPassword() ? 'eye-off' : 'eye'"
+            class="h-4 w-4"
+            aria-hidden="true"
+          ></lucide-icon>
+        </button>
+      </div>
+      <p
+        *ngIf="form.controls.password.touched && form.controls.password.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        A senha deve ter pelo menos 8 caracteres.
+      </p>
+    </div>
+
+    <div
+      *ngIf="errorMessage"
+      class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-200"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </div>
+
+    <button type="submit" [disabled]="loading" [class]="primaryBtnClass">
+      <span *ngIf="!loading">Criar conta</span>
+      <span *ngIf="loading">Criando…</span>
+    </button>
+  </form>
+
+  <p class="mt-5 text-center text-sm text-zinc-600 dark:text-zinc-400">
+    Já tem conta?
+    <a
+      routerLink="/login"
+      class="font-medium text-emerald-700 underline underline-offset-2 hover:no-underline dark:text-emerald-400"
+    >
+      Entrar
+    </a>
+  </p>
+</app-auth-page-shell>
