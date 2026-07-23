@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
+import { ClinicBrandingService } from '../services/clinic-branding.service';
 import { catchError, throwError } from 'rxjs';
 
 /**
@@ -10,6 +11,7 @@ import { catchError, throwError } from 'rxjs';
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+  const branding = inject(ClinicBrandingService);
   const router = inject(Router);
   const token = auth.getToken();
 
@@ -33,7 +35,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(reqWithAuth).pipe(
     catchError((err: unknown) => {
       if (isApi && !isAuthPublic && err instanceof HttpErrorResponse && err.status === 401) {
-        auth.logout();
+        branding.reset();
+        auth.logout({ reason: 'session_expired' });
         void router.navigateByUrl('/login');
       }
       return throwError(() => err);

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { isJwtExpired } from '../utils/jwt.util';
+import { setAuthNotice, type LogoutReason } from '../utils/auth-notice.util';
 
 /** Usuário retornado por GET /auth/me ou POST /auth/login. */
 export interface CurrentUser {
@@ -87,10 +88,14 @@ export class AuthService {
     return this.http.post<void>(`${this.apiBase()}/auth/reset-password`, { token, password });
   }
 
-  /** Desloga o usuário limpando o storage e o estado. */
-  logout(): void {
+  /**
+   * Desloga o usuário limpando o storage e o estado.
+   * @param options.reason `session_expired` grava aviso para a tela de login.
+   */
+  logout(options?: { reason?: LogoutReason }): void {
     this.clearToken();
     this.loggedIn.next(false);
+    setAuthNotice(options?.reason === 'session_expired' ? 'session_expired' : 'manual');
   }
 
   /** Dados do profissional logado (nome para receituário, etc.). */

@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { consumeAuthNotice } from '../../core/utils/auth-notice.util';
+import { NotificationService } from '../../shared/notifications/notification.service';
 
 @Component({
   selector: 'app-login',
@@ -11,21 +13,31 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly notifications = inject(NotificationService);
 
   loading = false;
   errorMessage: string | null = null;
+  sessionNotice: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
+  ngOnInit(): void {
+    if (consumeAuthNotice() === 'session_expired') {
+      this.sessionNotice = 'Sua sessão expirou. Entre novamente para continuar.';
+      this.notifications.warning(this.sessionNotice);
+    }
+  }
+
   submit(): void {
     this.errorMessage = null;
+    this.sessionNotice = null;
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -53,4 +65,3 @@ export class LoginComponent {
       });
   }
 }
-

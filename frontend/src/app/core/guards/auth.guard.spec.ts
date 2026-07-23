@@ -2,9 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { Router, UrlTree } from '@angular/router';
 import { authGuard } from './auth.guard';
 import { AuthService } from '../services/auth.service';
+import { ClinicBrandingService } from '../services/clinic-branding.service';
 
 describe('authGuard', () => {
   let authService: jasmine.SpyObj<AuthService>;
+  let branding: jasmine.SpyObj<ClinicBrandingService>;
   let router: jasmine.SpyObj<Router>;
   let loginUrlTree: UrlTree;
 
@@ -14,6 +16,7 @@ describe('authGuard', () => {
       'hasToken',
       'logout'
     ]);
+    branding = jasmine.createSpyObj<ClinicBrandingService>('ClinicBrandingService', ['reset']);
 
     loginUrlTree = { toString: () => '/login' } as UrlTree;
     router = jasmine.createSpyObj<Router>('Router', ['createUrlTree']);
@@ -22,6 +25,7 @@ describe('authGuard', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: AuthService, useValue: authService },
+        { provide: ClinicBrandingService, useValue: branding },
         { provide: Router, useValue: router }
       ]
     });
@@ -52,15 +56,17 @@ describe('authGuard', () => {
     expect(router.createUrlTree).toHaveBeenCalledWith(['/login']);
     expect(result).toBe(loginUrlTree);
     expect(authService.logout).not.toHaveBeenCalled();
+    expect(branding.reset).not.toHaveBeenCalled();
   });
 
-  it('faz logout e redireciona para /login quando o token está expirado', () => {
+  it('faz logout com session_expired e redireciona quando o token está expirado', () => {
     authService.isTokenValid.and.returnValue(false);
     authService.hasToken.and.returnValue(true);
 
     const result = runGuard();
 
-    expect(authService.logout).toHaveBeenCalled();
+    expect(branding.reset).toHaveBeenCalled();
+    expect(authService.logout).toHaveBeenCalledWith({ reason: 'session_expired' });
     expect(router.createUrlTree).toHaveBeenCalledWith(['/login']);
     expect(result).toBe(loginUrlTree);
   });

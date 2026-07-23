@@ -3,9 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
-import { AuthService } from '../services/auth.service';
 import { decodeJwtPayload } from '../utils/jwt.util';
 import { buildValidJwt } from '../testing/jwt-test.util';
+import { AuthService } from '../services/auth.service';
+import { ClinicBrandingService } from '../services/clinic-branding.service';
 import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
@@ -23,12 +24,14 @@ describe('authInterceptor', () => {
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['getToken', 'logout']);
     authService.getToken.and.returnValue(token);
     router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
+    const branding = jasmine.createSpyObj<ClinicBrandingService>('ClinicBrandingService', ['reset']);
 
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authService },
+        { provide: ClinicBrandingService, useValue: branding },
         { provide: Router, useValue: router }
       ]
     });
@@ -93,7 +96,7 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne(`${apiBase}/pets`);
     req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
 
-    expect(authService.logout).toHaveBeenCalled();
+    expect(authService.logout).toHaveBeenCalledWith({ reason: 'session_expired' });
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 

@@ -2,20 +2,32 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { setAuthNotice } from '../../core/utils/auth-notice.util';
+import { NotificationService } from '../../shared/notifications/notification.service';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let component: LoginComponent;
   let authService: jasmine.SpyObj<AuthService>;
+  let notifications: jasmine.SpyObj<NotificationService>;
   let router: Router;
 
   beforeEach(async () => {
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['login']);
+    notifications = jasmine.createSpyObj<NotificationService>('NotificationService', [
+      'success',
+      'error',
+      'warning'
+    ]);
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: authService }]
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authService },
+        { provide: NotificationService, useValue: notifications }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginComponent);
@@ -29,6 +41,16 @@ describe('LoginComponent', () => {
     expect(component.form.valid).toBeFalse();
     expect(component.form.controls.email.errors).toEqual(jasmine.objectContaining({ required: true }));
     expect(component.form.controls.password.errors).toEqual(jasmine.objectContaining({ required: true }));
+  });
+
+  it('exibe aviso quando a sessão expirou', () => {
+    setAuthNotice('session_expired');
+    const localFixture = TestBed.createComponent(LoginComponent);
+    localFixture.detectChanges();
+
+    expect(localFixture.componentInstance.sessionNotice).toContain('sessão expirou');
+    expect(notifications.warning).toHaveBeenCalled();
+    expect((localFixture.nativeElement as HTMLElement).textContent).toContain('sessão expirou');
   });
 
   it('marca os campos como touched e não chama login quando o formulário é inválido', () => {
