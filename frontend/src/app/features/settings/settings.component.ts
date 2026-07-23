@@ -1,6 +1,6 @@
 import { NgClass } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -8,13 +8,15 @@ import {
   ValidationErrors,
   Validators
 } from '@angular/forms';
+import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
+import { AuthService } from '../../core/services/auth.service';
 import { SettingsService } from '../../core/services/settings.service';
 import type { TenantSettings, UpdateTenantSettingsPayload } from '../../core/models/tenant-settings.model';
 import { NotificationService } from '../../shared/notifications/notification.service';
-import { ThemeService } from '../../shared/theme/theme.service';
+import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { digitsOnly, formatCpfCnpj, formatPhoneBR } from '../../shared/utils/br-masks';
 
 function phoneBrValidator(control: AbstractControl): ValidationErrors | null {
@@ -33,17 +35,23 @@ function optionalEmailValidator(control: AbstractControl): ValidationErrors | nu
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [NgClass, ReactiveFormsModule, LucideAngularModule, ShellMenuButtonComponent],
+  imports: [
+    NgClass,
+    ReactiveFormsModule,
+    LucideAngularModule,
+    ShellMenuButtonComponent,
+    ThemeToggleComponent
+  ],
   templateUrl: './settings.component.html'
 })
 export class SettingsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly settingsService = inject(SettingsService);
   private readonly notifications = inject(NotificationService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   readonly brand = inject(ClinicBrandingService);
-  readonly theme = inject(ThemeService);
 
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly loading = signal(true);
   readonly saving = signal(false);
 
@@ -140,8 +148,10 @@ export class SettingsComponent implements OnInit {
     return 'Erro ao conectar com o servidor.';
   }
 
-  toggleTheme(): void {
-    this.theme.toggle();
+  logout(): void {
+    this.brand.reset();
+    this.auth.logout();
+    void this.router.navigateByUrl('/login');
   }
 
   showFieldError(controlName: string): boolean {

@@ -21,15 +21,7 @@
       </div>
     </div>
 
-    <button
-      type="button"
-      class="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-      (click)="toggleTheme()"
-      [attr.aria-label]="isDark() ? 'Ativar modo claro' : 'Ativar modo escuro'"
-    >
-      <lucide-icon [name]="isDark() ? 'sun' : 'moon'" class="h-4 w-4" aria-hidden="true"></lucide-icon>
-      <span class="hidden sm:block">{{ isDark() ? 'Modo claro' : 'Modo escuro' }}</span>
-    </button>
+    <app-theme-toggle />
   </div>
 </header>
 
@@ -168,6 +160,21 @@
             </p>
           </div>
         </div>
+      </div>
+
+      <div
+        class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50"
+      >
+        <h2 class="text-base font-semibold text-zinc-900 dark:text-zinc-50">Conta</h2>
+        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Encerre a sessão neste dispositivo.</p>
+        <button
+          type="button"
+          class="mt-4 inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:border-red-500/30 dark:bg-zinc-950 dark:text-red-400 dark:hover:bg-red-500/10"
+          (click)="logout()"
+        >
+          <lucide-icon name="log-out" class="h-4 w-4" aria-hidden="true"></lucide-icon>
+          Sair da conta
+        </button>
       </div>
     </div>
   }
