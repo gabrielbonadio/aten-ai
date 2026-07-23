@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ClinicBrandingService } from '../../../core/services/clinic-branding.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { UiBlockService } from '../../../shared/ui/ui-block.service';
 
 export type SidebarNavItem = {
   label: string;
@@ -137,6 +138,7 @@ export type SidebarNavItem = {
 export class SidebarComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly uiBlock = inject(UiBlockService);
   readonly brand = inject(ClinicBrandingService);
 
   readonly collapsed = input.required<boolean>();
@@ -152,9 +154,10 @@ export class SidebarComponent {
   }
 
   onLogout(): void {
+    this.uiBlock.show('Saindo da conta…');
     this.brand.reset();
     this.auth.logout();
     this.navigated.emit();
-    void this.router.navigateByUrl('/login');
+    void this.router.navigateByUrl('/login').finally(() => this.uiBlock.hide());
   }
 }

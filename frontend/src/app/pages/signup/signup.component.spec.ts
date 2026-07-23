@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
@@ -40,10 +40,25 @@ describe('SignupComponent', () => {
     expect(authService.signUp).not.toHaveBeenCalled();
   });
 
+  it('rejeita senha sem caractere especial', () => {
+    component.form.setValue({
+      tenantName: 'Clínica Pets',
+      userName: 'Maria Silva',
+      email: 'maria@clinica.com',
+      password: 'SenhaSegura123'
+    });
+
+    component.submit();
+
+    expect(component.form.controls.password.invalid).toBeTrue();
+    expect(authService.signUp).not.toHaveBeenCalled();
+  });
+
   it('chama signUp e redireciona para /dashboard no sucesso', fakeAsync(() => {
     authService.signUp.and.returnValue(
       of({
         token: 'fake.jwt.token',
+        refreshToken: 'fake.refresh.token',
         user: {
           id: '1',
           name: 'Maria Silva',
@@ -58,17 +73,18 @@ describe('SignupComponent', () => {
       tenantName: 'Clínica Pets',
       userName: 'Maria Silva',
       email: 'maria@clinica.com',
-      password: 'SenhaSegura123'
+      password: 'SenhaSegura@123'
     });
 
     component.submit();
     tick();
+    flushMicrotasks();
 
     expect(authService.signUp).toHaveBeenCalledWith({
       tenantName: 'Clínica Pets',
       userName: 'Maria Silva',
       email: 'maria@clinica.com',
-      password: 'SenhaSegura123'
+      password: 'SenhaSegura@123'
     });
     expect(router.navigateByUrl).toHaveBeenCalledWith('/dashboard');
     expect(component.loading).toBeFalse();
@@ -86,7 +102,7 @@ describe('SignupComponent', () => {
       tenantName: 'Clínica Pets',
       userName: 'Maria Silva',
       email: 'maria@clinica.com',
-      password: 'SenhaSegura123'
+      password: 'SenhaSegura@123'
     });
 
     component.submit();

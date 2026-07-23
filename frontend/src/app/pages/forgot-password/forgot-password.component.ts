@@ -2,10 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { mapAuthHttpError } from '../../core/utils/auth-error.util';
 import { AuthPageShellComponent } from '../../shared/ui/auth-page-shell.component';
+import { UiBlockService } from '../../shared/ui/ui-block.service';
 import {
   AUTH_INPUT_CLASS,
   AUTH_LABEL_CLASS,
@@ -21,6 +21,7 @@ import {
 export class ForgotPasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly uiBlock = inject(UiBlockService);
 
   readonly inputClass = AUTH_INPUT_CLASS;
   readonly labelClass = AUTH_LABEL_CLASS;
@@ -44,20 +45,22 @@ export class ForgotPasswordComponent {
     }
 
     this.loading = true;
+    this.uiBlock.show('Enviando link de recuperação…');
     const { email } = this.form.getRawValue();
 
-    this.authService
-      .forgotPassword(email)
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: () => {
-          this.successMessage =
-            'Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.';
-          this.form.reset({ email: '' });
-        },
-        error: (err: unknown) => {
-          this.errorMessage = mapAuthHttpError(err, 'forgot');
-        }
-      });
+    this.authService.forgotPassword(email).subscribe({
+      next: () => {
+        this.loading = false;
+        this.uiBlock.hide();
+        this.successMessage =
+          'Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.';
+        this.form.reset({ email: '' });
+      },
+      error: (err: unknown) => {
+        this.loading = false;
+        this.uiBlock.hide();
+        this.errorMessage = mapAuthHttpError(err, 'forgot');
+      }
+    });
   }
 }

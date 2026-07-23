@@ -70,7 +70,7 @@
           [type]="showPassword() ? 'text' : 'password'"
           formControlName="password"
           autocomplete="new-password"
-          placeholder="Mínimo 8 caracteres"
+          placeholder="Ex.: SenhaSegura@123"
           [class]="inputClass + ' pr-11'"
         />
         <button
@@ -90,7 +90,7 @@
         *ngIf="form.controls.password.touched && form.controls.password.invalid"
         class="mt-1 text-sm text-red-600 dark:text-red-400"
       >
-        A senha deve ter pelo menos 8 caracteres.
+        {{ passwordHint }}
       </p>
     </div>
 

@@ -9,18 +9,16 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { mapAuthHttpError } from '../../core/utils/auth-error.util';
+import { STRONG_PASSWORD_PATTERN } from '../../core/utils/password-policy.util';
 import { AuthPageShellComponent } from '../../shared/ui/auth-page-shell.component';
+import { UiBlockService } from '../../shared/ui/ui-block.service';
 import {
   AUTH_INPUT_CLASS,
   AUTH_LABEL_CLASS,
   AUTH_PRIMARY_BTN_CLASS
 } from '../../shared/ui/auth-form.styles';
-
-/** Alinhado ao schema Joi do backend (reset-password). */
-const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 function passwordsMatchValidator(group: AbstractControl): ValidationErrors | null {
   const password = group.get('password')?.value;
@@ -48,6 +46,7 @@ export class ResetPasswordComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly uiBlock = inject(UiBlockService);
 
   readonly inputClass = AUTH_INPUT_CLASS;
   readonly labelClass = AUTH_LABEL_CLASS;
@@ -105,22 +104,24 @@ export class ResetPasswordComponent implements OnInit {
     }
 
     this.loading = true;
+    this.uiBlock.show('Salvando nova senha…');
     const { password } = this.form.getRawValue();
 
-    this.authService
-      .resetPassword(this.resetToken, password)
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: () => {
-          this.successMessage = 'Senha redefinida com sucesso. Você já pode entrar.';
-          this.form.reset();
-          setTimeout(() => {
-            void this.router.navigateByUrl('/login');
-          }, 1500);
-        },
-        error: (err: unknown) => {
-          this.errorMessage = mapAuthHttpError(err, 'reset');
-        }
-      });
+    this.authService.resetPassword(this.resetToken, password).subscribe({
+      next: () => {
+        this.loading = false;
+        this.uiBlock.hide();
+        this.successMessage = 'Senha redefinida com sucesso. Você já pode entrar.';
+        this.form.reset();
+        setTimeout(() => {
+          void this.router.navigateByUrl('/login');
+        }, 1500);
+      },
+      error: (err: unknown) => {
+        this.loading = false;
+        this.uiBlock.hide();
+        this.errorMessage = mapAuthHttpError(err, 'reset');
+      }
+    });
   }
 }

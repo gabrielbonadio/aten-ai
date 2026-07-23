@@ -17,6 +17,7 @@ import { SettingsService } from '../../core/services/settings.service';
 import type { TenantSettings, UpdateTenantSettingsPayload } from '../../core/models/tenant-settings.model';
 import { NotificationService } from '../../shared/notifications/notification.service';
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
+import { UiBlockService } from '../../shared/ui/ui-block.service';
 import { digitsOnly, formatCpfCnpj, formatPhoneBR } from '../../shared/utils/br-masks';
 
 function phoneBrValidator(control: AbstractControl): ValidationErrors | null {
@@ -50,6 +51,7 @@ export class SettingsComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly uiBlock = inject(UiBlockService);
   readonly brand = inject(ClinicBrandingService);
 
   readonly loading = signal(true);
@@ -122,15 +124,18 @@ export class SettingsComponent implements OnInit {
     };
 
     this.saving.set(true);
+    this.uiBlock.show('Salvando configurações…');
     this.settingsService.update(payload).subscribe({
       next: (t) => {
         this.saving.set(false);
+        this.uiBlock.hide();
         this.patchFormFromTenant(t);
         this.brand.applyTenant(t);
         this.notifications.success('Configurações salvas com sucesso.');
       },
       error: (err: unknown) => {
         this.saving.set(false);
+        this.uiBlock.hide();
         const msg =
           err instanceof HttpErrorResponse ? this.extractApiMessage(err) : 'Não foi possível salvar.';
         this.notifications.error(msg);
@@ -149,9 +154,10 @@ export class SettingsComponent implements OnInit {
   }
 
   logout(): void {
+    this.uiBlock.show('Saindo da conta…');
     this.brand.reset();
     this.auth.logout();
-    void this.router.navigateByUrl('/login');
+    void this.router.navigateByUrl('/login').finally(() => this.uiBlock.hide());
   }
 
   showFieldError(controlName: string): boolean {

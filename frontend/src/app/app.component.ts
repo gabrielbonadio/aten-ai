@@ -4,11 +4,12 @@ import { ClinicBrandingService } from './core/services/clinic-branding.service';
 import { AuthService } from './core/services/auth.service';
 import { ToastComponent } from './shared/notifications/toast.component';
 import { ThemeService } from './shared/theme/theme.service';
+import { UiBlockComponent } from './shared/ui/ui-block.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ToastComponent],
+  imports: [RouterOutlet, ToastComponent, UiBlockComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

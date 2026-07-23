@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
@@ -76,6 +76,7 @@ describe('LoginComponent', () => {
     authService.login.and.returnValue(
       of({
         token: 'fake.jwt.token',
+        refreshToken: 'fake.refresh.token',
         user: {
           id: '1',
           name: 'Admin',
@@ -93,6 +94,7 @@ describe('LoginComponent', () => {
 
     component.submit();
     tick();
+    flushMicrotasks();
 
     expect(authService.login).toHaveBeenCalledWith({
       email: 'admin@clinica.com',
