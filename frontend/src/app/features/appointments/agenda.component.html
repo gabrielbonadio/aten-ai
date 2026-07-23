@@ -56,6 +56,8 @@
         <div class="h-3 w-5/6 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"></div>
       </div>
     </div>
+  } @else if (loadError()) {
+    <app-load-error (retry)="load()" />
   } @else if (upcomingAppointments().length === 0) {
     <div
       class="flex flex-col items-center justify-center rounded-xl border border-dashed border-emerald-200/80 bg-emerald-50/40 px-8 py-16 text-center shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/5"
@@ -161,44 +163,12 @@
   (created)="onCreated()"
 />
 
-@if (appointmentToDelete() !== null) {
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Confirmar exclusão de agendamento"
-  >
-    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-      <div class="flex items-start gap-3">
-        <div
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300"
-        >
-          <lucide-icon name="alert-circle" class="h-5 w-5"></lucide-icon>
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="text-lg font-bold text-zinc-900 dark:text-zinc-50">Excluir Agendamento?</div>
-          <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Esta ação não pode ser desfeita. O agendamento será removido permanentemente.
-          </p>
-        </div>
-      </div>
-
-      <div class="mt-6 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          (click)="cancelDelete()"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/40"
-          (click)="confirmDelete()"
-        >
-          Sim, excluir
-        </button>
-      </div>
-    </div>
-  </div>
-}
+<app-confirm-dialog
+  [open]="appointmentToDelete() !== null"
+  title="Excluir agendamento?"
+  [confirming]="deleting()"
+  (cancelled)="cancelDelete()"
+  (confirmed)="confirmDelete()"
+>
+  Esta ação não pode ser desfeita. O agendamento será removido permanentemente.
+</app-confirm-dialog>

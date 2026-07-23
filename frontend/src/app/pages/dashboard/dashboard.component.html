@@ -43,76 +43,80 @@
 </header>
 
 <main class="px-4 py-6 sm:px-6">
-  <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
-    @for (card of cards(); track card.label) {
-      <div class="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <div class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{{ card.label }}</div>
-            <div class="mt-2 min-h-[2.25rem] text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-              @if (card.value === null) {
-                <span class="inline-block h-9 w-16 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700" aria-hidden="true"></span>
-              } @else {
-                {{ card.value }}
-              }
-            </div>
-          </div>
-          <div class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            <lucide-icon [name]="card.icon" class="h-5 w-5" aria-hidden="true"></lucide-icon>
-          </div>
-        </div>
-      </div>
-    }
-  </section>
-
-  <section class="mt-6 rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50">
-    <div class="flex items-center justify-between gap-3">
-      <div>
-        <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Próximos Atendimentos Hoje</div>
-        <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Agenda do dia (até 5 itens)</div>
-      </div>
-    </div>
-
-    <div class="mt-4">
-      @if (metricsLoading()) {
-        <div class="space-y-2">
-          <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
-          <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
-          <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
-        </div>
-      } @else if (todayAppointments().length === 0) {
-        <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-8 py-12 text-center dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div class="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-white text-zinc-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
-            <lucide-icon name="coffee" class="h-6 w-6" aria-hidden="true"></lucide-icon>
-          </div>
-          <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-            Nenhum atendimento programado para hoje. Dia livre!
-          </div>
-        </div>
-      } @else {
-        <div class="space-y-2">
-          @for (a of todayAppointments(); track a.id) {
-            <div class="flex items-center justify-between gap-4 rounded-xl border border-zinc-100 bg-white px-4 py-3 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:bg-emerald-500/5">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{{ appointmentTimeLabel(a) }}</div>
-                  <div class="truncate text-sm text-zinc-700 dark:text-zinc-200">
-                    {{ appointmentPetName(a) }}
-                  </div>
-                </div>
-                <div class="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                  Tutor: {{ appointmentTutorName(a) }}
-                </div>
+  @if (loadError()) {
+    <app-load-error (retry)="loadMetrics()" />
+  } @else {
+    <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      @for (card of cards(); track card.label) {
+        <div class="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{{ card.label }}</div>
+              <div class="mt-2 min-h-[2.25rem] text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                @if (card.value === null) {
+                  <span class="inline-block h-9 w-16 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700" aria-hidden="true"></span>
+                } @else {
+                  {{ card.value }}
+                }
               </div>
-              <span class="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium" [ngClass]="typePillClass(a)">
-                {{ appointmentTypeLabel(a) }}
-              </span>
             </div>
-          }
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <lucide-icon [name]="card.icon" class="h-5 w-5" aria-hidden="true"></lucide-icon>
+            </div>
+          </div>
         </div>
       }
-    </div>
-  </section>
+    </section>
+
+    <section class="mt-6 rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900/50">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Próximos Atendimentos Hoje</div>
+          <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Agenda do dia (até 5 itens)</div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        @if (metricsLoading()) {
+          <div class="space-y-2">
+            <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
+            <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
+            <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
+          </div>
+        } @else if (todayAppointments().length === 0) {
+          <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-8 py-12 text-center dark:border-zinc-800 dark:bg-zinc-950/30">
+            <div class="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-white text-zinc-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
+              <lucide-icon name="coffee" class="h-6 w-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              Nenhum atendimento programado para hoje. Dia livre!
+            </div>
+          </div>
+        } @else {
+          <div class="space-y-2">
+            @for (a of todayAppointments(); track a.id) {
+              <div class="flex items-center justify-between gap-4 rounded-xl border border-zinc-100 bg-white px-4 py-3 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:bg-emerald-500/5">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{{ appointmentTimeLabel(a) }}</div>
+                    <div class="truncate text-sm text-zinc-700 dark:text-zinc-200">
+                      {{ appointmentPetName(a) }}
+                    </div>
+                  </div>
+                  <div class="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    Tutor: {{ appointmentTutorName(a) }}
+                  </div>
+                </div>
+                <span class="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium" [ngClass]="typePillClass(a)">
+                  {{ appointmentTypeLabel(a) }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  }
 </main>
 
 <app-appointment-create-modal

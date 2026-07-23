@@ -6,6 +6,7 @@ import type { DashboardMetricsResponse } from '../../core/services/dashboard.ser
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { ThemeService } from '../../shared/theme/theme.service';
+import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { AppointmentCreateModalComponent } from '../../features/appointments/appointment-create-modal.component';
 
 type DashboardCardView = {
@@ -17,7 +18,13 @@ type DashboardCardView = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgClass, LucideAngularModule, ShellMenuButtonComponent, AppointmentCreateModalComponent],
+  imports: [
+    NgClass,
+    LucideAngularModule,
+    ShellMenuButtonComponent,
+    AppointmentCreateModalComponent,
+    LoadErrorComponent
+  ],
   templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
@@ -28,6 +35,7 @@ export class DashboardComponent implements OnInit {
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 
   readonly metricsLoading = signal(true);
+  readonly loadError = signal(false);
   readonly dashboardData = signal<DashboardMetricsResponse | null>(null);
 
   readonly appointmentModalOpen = signal(false);
@@ -96,9 +104,21 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.dashboardService.getMetrics().subscribe((m) => {
-      this.dashboardData.set(m);
-      this.metricsLoading.set(false);
+    this.loadMetrics();
+  }
+
+  loadMetrics(): void {
+    this.metricsLoading.set(true);
+    this.loadError.set(false);
+    this.dashboardService.getMetrics().subscribe({
+      next: (m) => {
+        this.dashboardData.set(m);
+        this.metricsLoading.set(false);
+      },
+      error: () => {
+        this.metricsLoading.set(false);
+        this.loadError.set(true);
+      }
     });
   }
 
@@ -112,9 +132,7 @@ export class DashboardComponent implements OnInit {
   }
 
   onAppointmentCreated(): void {
-    this.dashboardService.getMetrics().subscribe((m) => {
-      this.dashboardData.set(m);
-    });
+    this.loadMetrics();
   }
 
   toggleTheme(): void {

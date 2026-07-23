@@ -8,12 +8,21 @@ import { ClinicBrandingService } from '../../core/services/clinic-branding.servi
 import { PetService } from '../../core/services/pet.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
 import { ThemeService } from '../../shared/theme/theme.service';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { PetCreateModalComponent } from './pet-create-modal.component';
 
 @Component({
   selector: 'app-pet-list',
   standalone: true,
-  imports: [NgClass, LucideAngularModule, ShellMenuButtonComponent, PetCreateModalComponent],
+  imports: [
+    NgClass,
+    LucideAngularModule,
+    ShellMenuButtonComponent,
+    PetCreateModalComponent,
+    LoadErrorComponent,
+    ConfirmDialogComponent
+  ],
   templateUrl: './pet-list.component.html'
 })
 export class PetListComponent implements OnInit {
@@ -26,7 +35,9 @@ export class PetListComponent implements OnInit {
   readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly pets = signal<Pet[]>([]);
   readonly loading = signal(true);
+  readonly loadError = signal(false);
   readonly petModalOpen = signal(false);
+  readonly deleting = signal(false);
 
   readonly editingPetId = signal<string | null>(null);
   readonly editingPet = signal<Pet | null>(null);
@@ -40,13 +51,20 @@ export class PetListComponent implements OnInit {
     this.loadPets();
   }
 
-  private loadPets(): void {
+  loadPets(): void {
     this.loading.set(true);
+    this.loadError.set(false);
     // Garante refresh real mesmo com cache no service.
     this.petService.invalidateCache();
-    this.petService.findAll().subscribe((list) => {
-      this.pets.set(list);
-      this.loading.set(false);
+    this.petService.findAll().subscribe({
+      next: (list) => {
+        this.pets.set(list);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.loadError.set(true);
+      }
     });
   }
 
@@ -113,14 +131,17 @@ export class PetListComponent implements OnInit {
 
   confirmDeletePet(): void {
     const d = this.petToDelete();
-    if (!d?.id) return;
+    if (!d?.id || this.deleting()) return;
+    this.deleting.set(true);
     this.petService.remove(d.id).subscribe({
       next: () => {
         this.notifications.success('Pet excluído com sucesso.');
+        this.deleting.set(false);
         this.petToDelete.set(null);
         this.loadPets();
       },
       error: () => {
+        this.deleting.set(false);
         this.notifications.error('Não foi possível excluir o pet.');
       }
     });

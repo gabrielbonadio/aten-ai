@@ -7,6 +7,8 @@ import { ClinicBrandingService } from '../../core/services/clinic-branding.servi
 import { AppointmentService } from '../../core/services/appointment.service';
 import { ThemeService } from '../../shared/theme/theme.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { AppointmentCreateModalComponent } from './appointment-create-modal.component';
 
 type AgendaRowView = Appointment & {
@@ -25,7 +27,9 @@ type AgendaRowView = Appointment & {
     DatePipe,
     LucideAngularModule,
     ShellMenuButtonComponent,
-    AppointmentCreateModalComponent
+    AppointmentCreateModalComponent,
+    LoadErrorComponent,
+    ConfirmDialogComponent
   ],
   templateUrl: './agenda.component.html'
 })
@@ -38,10 +42,12 @@ export class AgendaComponent implements OnInit {
   readonly isDark = computed(() => this.theme.mode() === 'dark');
 
   readonly loading = signal(true);
+  readonly loadError = signal(false);
   readonly appointments = signal<Appointment[]>([]);
   readonly createModalOpen = signal(false);
   readonly editingAppointment = signal<Appointment | null>(null);
   readonly appointmentToDelete = signal<string | null>(null);
+  readonly deleting = signal(false);
 
   @ViewChild(AppointmentCreateModalComponent)
   private readonly appointmentModal?: AppointmentCreateModalComponent;
@@ -87,11 +93,18 @@ export class AgendaComponent implements OnInit {
     this.load();
   }
 
-  private load(): void {
+  load(): void {
     this.loading.set(true);
-    this.appointmentService.findAll().subscribe((list) => {
-      this.appointments.set(Array.isArray(list) ? list : []);
-      this.loading.set(false);
+    this.loadError.set(false);
+    this.appointmentService.findAll().subscribe({
+      next: (list) => {
+        this.appointments.set(Array.isArray(list) ? list : []);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.loadError.set(true);
+      }
     });
   }
 
@@ -168,15 +181,18 @@ export class AgendaComponent implements OnInit {
 
   confirmDelete(): void {
     const id = this.appointmentToDelete();
-    if (!id) return;
+    if (!id || this.deleting()) return;
+    this.deleting.set(true);
     this.appointmentService.remove(id).subscribe({
       next: () => {
-        this.notifications.success('Agendamento cancelado');
-        this.load();
+        this.notifications.success('Agendamento excluído');
+        this.deleting.set(false);
         this.appointmentToDelete.set(null);
+        this.load();
       },
       error: () => {
-        this.notifications.error('Não foi possível cancelar o agendamento.');
+        this.deleting.set(false);
+        this.notifications.error('Não foi possível excluir o agendamento.');
       }
     });
   }
@@ -221,4 +237,3 @@ export class AgendaComponent implements OnInit {
   }
 
 }
-

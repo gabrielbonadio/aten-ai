@@ -55,6 +55,8 @@
         <div class="h-3 w-5/6 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"></div>
       </div>
     </div>
+  } @else if (loadError()) {
+    <app-load-error (retry)="loadPets()" />
   } @else if (pets().length === 0) {
     <div
       class="flex flex-col items-center justify-center rounded-xl border border-dashed border-emerald-200/80 bg-emerald-50/40 px-8 py-16 text-center shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/5"
@@ -64,9 +66,9 @@
       >
         <lucide-icon name="search" class="h-7 w-7"></lucide-icon>
       </div>
-      <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Nenhum pet encontrado</h2>
+      <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Nenhum pet cadastrado ainda.</h2>
       <p class="mt-2 max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
-        Cadastre pets ou ajuste os filtros para ver os pacientes da clínica aqui.
+        Cadastre pets para ver os pacientes da clínica aqui.
       </p>
       <button
         type="button"
@@ -158,44 +160,12 @@
   (created)="onPetCreated()"
 />
 
-@if (petToDelete() !== null) {
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Confirmar exclusão de pet"
-  >
-    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-      <div class="flex items-start gap-3">
-        <div
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300"
-        >
-          <lucide-icon name="alert-circle" class="h-5 w-5"></lucide-icon>
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="text-lg font-bold text-zinc-900 dark:text-zinc-50">Excluir pet?</div>
-          <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Deseja excluir o pet <span class="font-semibold text-zinc-900 dark:text-zinc-50">{{ petToDelete()!.name }}</span
-            >? Esta ação não poderá ser desfeita.
-          </p>
-        </div>
-      </div>
-      <div class="mt-6 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          (click)="cancelDeletePet()"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center justify-center rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/40"
-          (click)="confirmDeletePet()"
-        >
-          Sim, excluir
-        </button>
-      </div>
-    </div>
-  </div>
-}
+<app-confirm-dialog
+  [open]="petToDelete() !== null"
+  title="Excluir pet?"
+  [confirming]="deleting()"
+  (cancelled)="cancelDeletePet()"
+  (confirmed)="confirmDeletePet()"
+>
+  Deseja excluir o pet <span class="font-semibold text-zinc-900 dark:text-zinc-50">{{ petToDelete()?.name }}</span>? Esta ação não poderá ser desfeita.
+</app-confirm-dialog>

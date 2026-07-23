@@ -6,12 +6,20 @@ import { ClinicBrandingService } from '../../core/services/clinic-branding.servi
 import { TutorService } from '../../core/services/tutor.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
 import { ThemeService } from '../../shared/theme/theme.service';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { TutorCreateModalComponent } from './tutor-create-modal.component';
 
 @Component({
   selector: 'app-tutors',
   standalone: true,
-  imports: [LucideAngularModule, ShellMenuButtonComponent, TutorCreateModalComponent],
+  imports: [
+    LucideAngularModule,
+    ShellMenuButtonComponent,
+    TutorCreateModalComponent,
+    LoadErrorComponent,
+    ConfirmDialogComponent
+  ],
   templateUrl: './tutors.component.html'
 })
 export class TutorsComponent implements OnInit {
@@ -23,10 +31,12 @@ export class TutorsComponent implements OnInit {
   readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly tutors = signal<Tutor[]>([]);
   readonly loading = signal(true);
+  readonly loadError = signal(false);
   readonly searchQuery = signal('');
   readonly tutorModalOpen = signal(false);
   readonly editingTutor = signal<Tutor | null>(null);
   readonly tutorToDelete = signal<{ id: string; name: string } | null>(null);
+  readonly deleting = signal(false);
 
   readonly filteredTutors = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
@@ -56,12 +66,19 @@ export class TutorsComponent implements OnInit {
     this.loadTutors();
   }
 
-  private loadTutors(): void {
+  loadTutors(): void {
     this.loading.set(true);
+    this.loadError.set(false);
     this.tutorService.invalidateCache();
-    this.tutorService.findAll().subscribe((list) => {
-      this.tutors.set(list);
-      this.loading.set(false);
+    this.tutorService.findAll().subscribe({
+      next: (list) => {
+        this.tutors.set(list);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.loadError.set(true);
+      }
     });
   }
 
@@ -103,14 +120,17 @@ export class TutorsComponent implements OnInit {
 
   confirmDeleteTutor(): void {
     const d = this.tutorToDelete();
-    if (!d?.id) return;
+    if (!d?.id || this.deleting()) return;
+    this.deleting.set(true);
     this.tutorService.remove(d.id).subscribe({
       next: () => {
         this.notifications.success('Tutor excluído com sucesso.');
+        this.deleting.set(false);
         this.tutorToDelete.set(null);
         this.loadTutors();
       },
       error: () => {
+        this.deleting.set(false);
         this.notifications.error('Não foi possível excluir o tutor.');
       }
     });
