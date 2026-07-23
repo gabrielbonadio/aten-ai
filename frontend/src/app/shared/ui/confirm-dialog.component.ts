@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   HostListener,
+  OnDestroy,
   effect,
   input,
   output,
@@ -71,7 +72,7 @@ import { LucideAngularModule } from 'lucide-angular';
     }
   `
 })
-export class ConfirmDialogComponent {
+export class ConfirmDialogComponent implements OnDestroy {
   readonly open = input(false);
   readonly title = input.required<string>();
   readonly confirmLabel = input('Sim, excluir');
@@ -95,6 +96,10 @@ export class ConfirmDialogComponent {
         document.body.style.overflow = '';
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    document.body.style.overflow = '';
   }
 
   @HostListener('document:keydown.escape')
