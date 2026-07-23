@@ -1,25 +1,18 @@
 import { Component, computed, inject } from '@angular/core';
-import { LucideAngularModule } from 'lucide-angular';
-import { ThemeService } from '../theme/theme.service';
+import { ThemeToggleComponent } from '../theme/theme-toggle.component';
 
 /** Envelope visual compartilhado das telas públicas de auth (zinc/emerald + dark). */
 @Component({
   selector: 'app-auth-page-shell',
   standalone: true,
-  imports: [LucideAngularModule],
+  imports: [ThemeToggleComponent],
   template: `
     <div
       class="relative flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10 dark:bg-zinc-950"
     >
-      <button
-        type="button"
-        class="absolute right-4 top-4 inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        (click)="theme.toggle()"
-        [attr.aria-label]="isDark() ? 'Ativar modo claro' : 'Ativar modo escuro'"
-      >
-        <lucide-icon [name]="isDark() ? 'sun' : 'moon'" class="h-4 w-4" aria-hidden="true"></lucide-icon>
-        <span class="hidden sm:inline">{{ isDark() ? 'Modo claro' : 'Modo escuro' }}</span>
-      </button>
+      <div class="absolute right-4 top-4">
+        <app-theme-toggle />
+      </div>
 
       <div class="w-full max-w-md">
         <div class="mb-6 flex flex-col items-center text-center">
@@ -43,7 +36,4 @@ import { ThemeService } from '../theme/theme.service';
     </div>
   `
 })
-export class AuthPageShellComponent {
-  readonly theme = inject(ThemeService);
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
-}
+export class AuthPageShellComponent {}

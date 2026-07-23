@@ -36,7 +36,9 @@ import { ShellLayoutService } from '../core/services/shell-layout.service';
       </div>
 
       <div class="flex min-w-0 min-h-screen flex-1 flex-col">
-        <router-outlet />
+        <div id="main-content" tabindex="-1" class="flex min-h-0 min-w-0 flex-1 flex-col outline-none">
+          <router-outlet />
+        </div>
       </div>
     </div>
   `

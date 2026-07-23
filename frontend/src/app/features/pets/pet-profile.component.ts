@@ -8,7 +8,7 @@ import { ClinicBrandingService } from '../../core/services/clinic-branding.servi
 import { PrescriptionPdfService } from '../../core/services/prescription-pdf.service';
 import { PetService } from '../../core/services/pet.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
-import { ThemeService } from '../../shared/theme/theme.service';
+import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { PetConsultModalComponent } from './pet-consult-modal.component';
 import { PetMedicalDetailModalComponent } from './pet-medical-detail-modal.component';
 
@@ -21,6 +21,7 @@ type PetProfileView = Pet & { medicalRecords?: MedicalRecord[] };
     RouterLink,
     LucideAngularModule,
     ShellMenuButtonComponent,
+    ThemeToggleComponent,
     PetConsultModalComponent,
     PetMedicalDetailModalComponent
   ],
@@ -32,10 +33,7 @@ export class PetProfileComponent implements OnInit {
   private readonly petService = inject(PetService);
   private readonly prescriptionPdf = inject(PrescriptionPdfService);
   private readonly notify = inject(NotificationService);
-  readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
 
   readonly loading = signal(true);
   readonly pet = signal<PetProfileView | null>(null);
@@ -126,10 +124,6 @@ export class PetProfileComponent implements OnInit {
     if (!t) return '—';
     if (t.length <= 140) return t;
     return `${t.slice(0, 140)}…`;
-  }
-
-  toggleTheme(): void {
-    this.theme.toggle();
   }
 
   backToList(): void {

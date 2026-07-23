@@ -5,7 +5,7 @@ import type { Tutor } from '../../core/models/tutor.model';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { TutorService } from '../../core/services/tutor.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
-import { ThemeService } from '../../shared/theme/theme.service';
+import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { TutorCreateModalComponent } from './tutor-create-modal.component';
@@ -16,6 +16,7 @@ import { TutorCreateModalComponent } from './tutor-create-modal.component';
   imports: [
     LucideAngularModule,
     ShellMenuButtonComponent,
+    ThemeToggleComponent,
     TutorCreateModalComponent,
     LoadErrorComponent,
     ConfirmDialogComponent
@@ -25,10 +26,8 @@ import { TutorCreateModalComponent } from './tutor-create-modal.component';
 export class TutorsComponent implements OnInit {
   private readonly tutorService = inject(TutorService);
   private readonly notifications = inject(NotificationService);
-  readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
 
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly tutors = signal<Tutor[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal(false);
@@ -138,9 +137,5 @@ export class TutorsComponent implements OnInit {
 
   petCount(tutor: Tutor): number {
     return tutor.pets?.length ?? 0;
-  }
-
-  toggleTheme(): void {
-    this.theme.toggle();
   }
 }

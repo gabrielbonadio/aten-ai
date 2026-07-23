@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
@@ -7,7 +7,7 @@ import type { Pet } from '../../core/models/pet.model';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { PetService } from '../../core/services/pet.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
-import { ThemeService } from '../../shared/theme/theme.service';
+import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { PetCreateModalComponent } from './pet-create-modal.component';
@@ -19,6 +19,7 @@ import { PetCreateModalComponent } from './pet-create-modal.component';
     NgClass,
     LucideAngularModule,
     ShellMenuButtonComponent,
+    ThemeToggleComponent,
     PetCreateModalComponent,
     LoadErrorComponent,
     ConfirmDialogComponent
@@ -29,10 +30,8 @@ export class PetListComponent implements OnInit {
   private readonly petService = inject(PetService);
   private readonly router = inject(Router);
   private readonly notifications = inject(NotificationService);
-  readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
 
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
   readonly pets = signal<Pet[]>([]);
   readonly loading = signal(true);
   readonly loadError = signal(false);
@@ -86,10 +85,6 @@ export class PetListComponent implements OnInit {
     this.editingPetId.set(null);
     this.editingPet.set(null);
     this.loadPets();
-  }
-
-  toggleTheme(): void {
-    this.theme.toggle();
   }
 
   speciesBreed(pet: Pet): string {

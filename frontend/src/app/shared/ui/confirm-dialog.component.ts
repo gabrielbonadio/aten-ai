@@ -26,7 +26,7 @@ import { LucideAngularModule } from 'lucide-angular';
         (click)="onBackdropClick()"
       >
         <div
-          class="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
+          class="w-full max-w-md overscroll-contain rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
           role="dialog"
           aria-modal="true"
           [attr.aria-labelledby]="titleId"

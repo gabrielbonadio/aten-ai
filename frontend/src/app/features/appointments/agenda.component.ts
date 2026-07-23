@@ -5,7 +5,7 @@ import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/
 import type { Appointment } from '../../core/models/appointment.model';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { AppointmentService } from '../../core/services/appointment.service';
-import { ThemeService } from '../../shared/theme/theme.service';
+import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { NotificationService } from '../../shared/notifications/notification.service';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
@@ -27,6 +27,7 @@ type AgendaRowView = Appointment & {
     DatePipe,
     LucideAngularModule,
     ShellMenuButtonComponent,
+    ThemeToggleComponent,
     AppointmentCreateModalComponent,
     LoadErrorComponent,
     ConfirmDialogComponent
@@ -36,10 +37,7 @@ type AgendaRowView = Appointment & {
 export class AgendaComponent implements OnInit {
   private readonly appointmentService = inject(AppointmentService);
   private readonly notifications = inject(NotificationService);
-  readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
 
   readonly loading = signal(true);
   readonly loadError = signal(false);
@@ -121,10 +119,6 @@ export class AgendaComponent implements OnInit {
 
   onCreated(): void {
     this.load();
-  }
-
-  toggleTheme(): void {
-    this.theme.toggle();
   }
 
   typePillClass(typeLabel: string): string {

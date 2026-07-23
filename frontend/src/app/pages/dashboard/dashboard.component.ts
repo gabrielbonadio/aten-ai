@@ -5,7 +5,7 @@ import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/
 import type { DashboardMetricsResponse } from '../../core/services/dashboard.service';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { DashboardService } from '../../core/services/dashboard.service';
-import { ThemeService } from '../../shared/theme/theme.service';
+import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { AppointmentCreateModalComponent } from '../../features/appointments/appointment-create-modal.component';
 
@@ -22,6 +22,7 @@ type DashboardCardView = {
     NgClass,
     LucideAngularModule,
     ShellMenuButtonComponent,
+    ThemeToggleComponent,
     AppointmentCreateModalComponent,
     LoadErrorComponent
   ],
@@ -29,10 +30,7 @@ type DashboardCardView = {
 })
 export class DashboardComponent implements OnInit {
   private readonly dashboardService = inject(DashboardService);
-  readonly theme = inject(ThemeService);
   readonly brand = inject(ClinicBrandingService);
-
-  readonly isDark = computed(() => this.theme.mode() === 'dark');
 
   readonly metricsLoading = signal(true);
   readonly loadError = signal(false);
@@ -133,9 +131,5 @@ export class DashboardComponent implements OnInit {
 
   onAppointmentCreated(): void {
     this.loadMetrics();
-  }
-
-  toggleTheme(): void {
-    this.theme.toggle();
   }
 }
