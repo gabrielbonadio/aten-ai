@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import { logger } from '../../../shared/logging/logger';
 import webhookService from '../../../shared/services/WebhookService';
 import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
 import conversationStateRepository from '../../conversations/repositories/ConversationStateRepository';
@@ -58,7 +59,7 @@ class AppointmentRemindersJob {
 
   start(): void {
     if (this.timer) {
-      console.warn('[AppointmentRemindersJob] start() chamado com job já agendado; ignorando.');
+      logger.warn('job.reminders.start_ignored_already_scheduled');
       return;
     }
     this.scheduleNext();
@@ -68,7 +69,7 @@ class AppointmentRemindersJob {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
-      console.log('[AppointmentRemindersJob] timer cancelado.');
+      logger.info('job.reminders.timer_cancelled');
     }
   }
 
@@ -81,7 +82,7 @@ class AppointmentRemindersJob {
    */
   async runOnce(): Promise<ReminderRunResult> {
     if (this.isRunning) {
-      console.warn('[AppointmentRemindersJob] já em execução; pulando esta chamada.');
+      logger.warn('job.reminders.skip_already_running');
       return { found: 0, sent: 0, failed: 0 };
     }
     this.isRunning = true;
@@ -91,9 +92,10 @@ class AppointmentRemindersJob {
 
     try {
       const { start, end } = this.tomorrowWindow();
-      console.log(
-        `[AppointmentRemindersJob] iniciando varredura | janela ${start.toISOString()} → ${end.toISOString()}`
-      );
+      logger.info('job.reminders.scan_start', {
+        windowStart: start.toISOString(),
+        windowEnd: end.toISOString()
+      });
 
       const appointments = (await Appointment.findAll({
         where: {
@@ -126,9 +128,7 @@ class AppointmentRemindersJob {
           if (!tenant || !pet || !tutor) {
             // `required: true` no include já deveria garantir, mas defendemos
             // contra inconsistências de dados (FK órfão, paranoid delete, etc).
-            console.warn(
-              `[AppointmentRemindersJob] appointment ${appt.id} sem tenant/pet/tutor; pulando.`
-            );
+            logger.warn('job.reminders.missing_relations', { appointmentId: appt.id });
             result.failed++;
             continue;
           }
@@ -164,15 +164,14 @@ class AppointmentRemindersJob {
                 24
               );
             } catch (stateErr) {
-              console.warn(
-                `[AppointmentRemindersJob] saveState falhou para appointment ${appt.id} (phone=${tutorPhoneE164}); seguindo com o dispatch sem estado:`,
-                stateErr
-              );
+              logger.warn('job.reminders.save_state_failed', {
+                appointmentId: appt.id,
+                phone: tutorPhoneE164,
+                error: stateErr instanceof Error ? stateErr.message : String(stateErr)
+              });
             }
           } else {
-            console.warn(
-              `[AppointmentRemindersJob] telefone do tutor inválido para appointment ${appt.id}; estado de conversa não gravado.`
-            );
+            logger.warn('job.reminders.invalid_tutor_phone', { appointmentId: appt.id });
           }
 
           webhookService.dispatch('appointment.reminder', {
@@ -192,22 +191,27 @@ class AppointmentRemindersJob {
 
           result.sent++;
         } catch (err) {
-          console.error(
-            `[AppointmentRemindersJob] falha ao processar appointment ${appt.id}:`,
-            err
-          );
+          logger.error('job.reminders.item_failed', {
+            appointmentId: appt.id,
+            error: err instanceof Error ? err.message : String(err)
+          });
           result.failed++;
         }
       }
 
       const elapsedMs = Date.now() - startedAt;
-      console.log(
-        `[AppointmentRemindersJob] concluído em ${elapsedMs}ms | encontrados: ${result.found}, enviados: ${result.sent}, falhas: ${result.failed}`
-      );
+      logger.info('job.reminders.scan_done', {
+        elapsedMs,
+        found: result.found,
+        sent: result.sent,
+        failed: result.failed
+      });
     } catch (err) {
       // Falha catastrófica (DB offline, query inválida). NUNCA propaga
       // para fora do job: o scheduler precisa continuar.
-      console.error('[AppointmentRemindersJob] falha catastrófica na varredura:', err);
+      logger.error('job.reminders.scan_catastrophic', {
+        error: err instanceof Error ? err.message : String(err)
+      });
     } finally {
       this.isRunning = false;
     }
@@ -243,9 +247,10 @@ class AppointmentRemindersJob {
     const next = this.nextRunDate();
     const delayMs = next.getTime() - Date.now();
     const nextFormatted = next.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    console.log(
-      `[AppointmentRemindersJob] próxima execução: ${nextFormatted} (em ${Math.round(delayMs / 60_000)} min)`
-    );
+    logger.info('job.reminders.next_run', {
+      nextRun: nextFormatted,
+      delayMinutes: Math.round(delayMs / 60_000)
+    });
 
     this.timer = setTimeout(async () => {
       this.timer = null;
@@ -254,7 +259,9 @@ class AppointmentRemindersJob {
       } catch (err) {
         // `runOnce` já trata erros internamente; defendemos contra
         // rejeições inesperadas vindas de I/O subjacente.
-        console.error('[AppointmentRemindersJob] erro inesperado no tick:', err);
+        logger.error('job.reminders.tick_unexpected', {
+          error: err instanceof Error ? err.message : String(err)
+        });
       } finally {
         // Re-agenda independente de sucesso ou falha — o relógio não para.
         this.scheduleNext();

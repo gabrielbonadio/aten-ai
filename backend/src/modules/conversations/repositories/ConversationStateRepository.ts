@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import { logger } from '../../../shared/logging/logger';
 import ConversationState from '../models/ConversationState';
 
 /**
@@ -34,9 +35,7 @@ export type ConversationIntent =
  *   `(tenantId, tutorPhone)` para detectar conflito e atualizar in-place.
  *   Sem leitura prévia → menos latência e zero race condition.
  *
- * - **Log de contexto rico**: cada catch loga tenantId/phone/intent
- *   antes de relançar. Em produção, isso reduz drasticamente o MTTR de
- *   incidentes de inbound (onde o telefone do tutor é a chave de busca).
+ * - **Log sem PII em claro**: telefone é mascarado pelo logger.
  */
 class ConversationStateRepository {
   /**
@@ -72,13 +71,13 @@ class ConversationStateRepository {
 
       return state;
     } catch (err) {
-      console.error(
-        `[ConversationStateRepository] saveState falhou | tenantId=${tenantId} phone=${phone} intent=${intent}:`,
-        err
-      );
-      throw new Error(
-        `Não foi possível persistir o estado de conversa para o telefone ${phone}.`
-      );
+      logger.error('conversation_state.save_failed', {
+        tenantId,
+        phone,
+        intent,
+        error: err instanceof Error ? err.message : String(err)
+      });
+      throw new Error('Não foi possível persistir o estado de conversa.');
     }
   }
 
@@ -104,13 +103,12 @@ class ConversationStateRepository {
         }
       });
     } catch (err) {
-      console.error(
-        `[ConversationStateRepository] getState falhou | tenantId=${tenantId} phone=${phone}:`,
-        err
-      );
-      throw new Error(
-        `Não foi possível buscar o estado de conversa para o telefone ${phone}.`
-      );
+      logger.error('conversation_state.get_failed', {
+        tenantId,
+        phone,
+        error: err instanceof Error ? err.message : String(err)
+      });
+      throw new Error('Não foi possível buscar o estado de conversa.');
     }
   }
 
@@ -130,13 +128,12 @@ class ConversationStateRepository {
         where: { [Op.and]: [{ tenantId }, { tutorPhone: phone }] }
       });
     } catch (err) {
-      console.error(
-        `[ConversationStateRepository] clearState falhou | tenantId=${tenantId} phone=${phone}:`,
-        err
-      );
-      throw new Error(
-        `Não foi possível remover o estado de conversa para o telefone ${phone}.`
-      );
+      logger.error('conversation_state.clear_failed', {
+        tenantId,
+        phone,
+        error: err instanceof Error ? err.message : String(err)
+      });
+      throw new Error('Não foi possível remover o estado de conversa.');
     }
   }
 
@@ -157,13 +154,13 @@ class ConversationStateRepository {
         where: { expiresAt: { [Op.lte]: new Date() } }
       });
       if (deleted > 0) {
-        console.log(
-          `[ConversationStateRepository] GC removeu ${deleted} estado(s) expirado(s).`
-        );
+        logger.info('conversation_state.gc_removed', { deleted });
       }
       return deleted;
     } catch (err) {
-      console.error('[ConversationStateRepository] clearExpiredStates falhou:', err);
+      logger.error('conversation_state.gc_failed', {
+        error: err instanceof Error ? err.message : String(err)
+      });
       throw new Error('Falha ao limpar estados de conversa expirados.');
     }
   }

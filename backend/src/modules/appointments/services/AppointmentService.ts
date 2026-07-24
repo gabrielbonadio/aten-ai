@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
 import { NotFoundError } from '../../../shared/errors/AppError';
+import { logger } from '../../../shared/logging/logger';
 import webhookService from '../../../shared/services/WebhookService';
 import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
 import Pet from '../../pets/models/Pet';
@@ -70,7 +71,9 @@ class AppointmentService {
         });
       }
     } catch (err) {
-      console.error('[AppointmentService] Falha ao preparar webhook appointment.created:', err);
+      logger.error('appointment.webhook_prepare_failed', {
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
 
     return appointment;

@@ -89,6 +89,7 @@ Configure secrets no painel do provedor ou no `.env` local (gitignored).
 | `ENABLE_IN_PROCESS_JOBS` | `true` numa réplica; `false` + `npm run worker` se scale-out |
 | `EMAIL_FROM` / `RESEND_API_KEY` | Opcional |
 | `N8N_*` | Vazio se não usar WhatsApp |
+| `PII_ENCRYPTION_KEY` | Recomendado: `openssl rand -hex 32` — cifra sintomas/diagnóstico/prescrição (ver `docs/LGPD.md`) |
 
 ### Frontend (build)
 

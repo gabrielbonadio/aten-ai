@@ -1,3 +1,4 @@
+import { logger } from '../../../shared/logging/logger';
 import conversationStateRepository from '../repositories/ConversationStateRepository';
 
 /**
@@ -20,7 +21,7 @@ class ConversationGarbageCollector {
 
   start(): void {
     if (this.timer) {
-      console.warn('[ConversationGC] start() chamado com job já agendado; ignorando.');
+      logger.warn('job.conversation_gc.start_ignored_already_scheduled');
       return;
     }
     this.scheduleNext();
@@ -30,7 +31,7 @@ class ConversationGarbageCollector {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
-      console.log('[ConversationGC] timer cancelado.');
+      logger.info('job.conversation_gc.timer_cancelled');
     }
   }
 
@@ -40,21 +41,23 @@ class ConversationGarbageCollector {
    */
   async runOnce(): Promise<number> {
     if (this.isRunning) {
-      console.warn('[ConversationGC] já em execução; pulando esta chamada.');
+      logger.warn('job.conversation_gc.skip_already_running');
       return 0;
     }
     this.isRunning = true;
 
     try {
-      console.log('[ConversationGC] iniciando limpeza de estados expirados (conversation_states)...');
+      logger.info('job.conversation_gc.scan_start');
 
       const deleted = await conversationStateRepository.clearExpiredStates();
 
-      console.log(`[ConversationGC] limpeza concluída. Registros removidos: ${deleted}`);
+      logger.info('job.conversation_gc.scan_done', { deleted });
       return deleted;
     } catch (err) {
       // Nunca propaga: o scheduler deve continuar mesmo com DB intermitente.
-      console.error('[ConversationGC] falha ao executar clearExpiredStates:', err);
+      logger.error('job.conversation_gc.scan_failed', {
+        error: err instanceof Error ? err.message : String(err)
+      });
       return 0;
     } finally {
       this.isRunning = false;
@@ -76,9 +79,10 @@ class ConversationGarbageCollector {
     const next = this.nextRunDate();
     const delayMs = next.getTime() - Date.now();
     const nextFormatted = next.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    console.log(
-      `[ConversationGC] próxima execução (cron 0 3 * * *): ${nextFormatted} (em ~${Math.round(delayMs / 60_000)} min)`
-    );
+    logger.info('job.conversation_gc.next_run', {
+      nextRun: nextFormatted,
+      delayMinutes: Math.round(delayMs / 60_000)
+    });
 
     this.timer = setTimeout(() => {
       this.timer = null;
@@ -87,7 +91,9 @@ class ConversationGarbageCollector {
         try {
           await this.runOnce();
         } catch (err) {
-          console.error('[ConversationGC] erro inesperado no tick (defesa extra):', err);
+          logger.error('job.conversation_gc.tick_unexpected', {
+            error: err instanceof Error ? err.message : String(err)
+          });
         } finally {
           this.scheduleNext();
         }

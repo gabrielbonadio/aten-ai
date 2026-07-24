@@ -1,3 +1,5 @@
+import { redactLogFields } from './maskPii';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 type LogFields = Record<string, unknown>;
@@ -22,13 +24,15 @@ function write(level: LogLevel, message: string, fields?: LogFields): void {
     return;
   }
 
+  const safeFields = fields ? redactLogFields(fields) : undefined;
+
   const entry = {
     ts: new Date().toISOString(),
     level,
     msg: message,
     service: 'aten-ai-backend',
     env: process.env.NODE_ENV ?? 'development',
-    ...fields
+    ...safeFields
   };
 
   const line = JSON.stringify(entry);
@@ -43,6 +47,7 @@ function write(level: LogLevel, message: string, fields?: LogFields): void {
 
 /**
  * Logger estruturado (JSON em uma linha) — fácil de ingerir em CloudWatch, Datadog, etc.
+ * Campos sensíveis (email, phone, tokens) são mascarados automaticamente.
  */
 export const logger = {
   debug(message: string, fields?: LogFields): void {

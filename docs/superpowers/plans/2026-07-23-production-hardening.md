@@ -153,11 +153,11 @@ Login/signup/refresh setam cookies `access_token` + `refresh_token` (`httpOnly`,
 - Create: `backend/src/shared/crypto/fieldEncryption.ts` (AES-256-GCM com chave `PII_ENCRYPTION_KEY`)
 - Modify: campos sensíveis (ex.: tutor phone/email, documentos de tenant) — **avaliar escopo real antes de criptografar tudo**
 
-- [ ] **Step 1:** Substituir `console.*` restantes por `logger.*` com e-mail/telefone mascarados.
+- [x] **Step 1:** Substituir `console.*` restantes por `logger.*` com e-mail/telefone mascarados.
 
-- [ ] **Step 2:** Definir quais campos são PII críticos; criptografar em repouso só esses.
+- [x] **Step 2:** Definir quais campos são PII críticos; criptografar em repouso só esses.
 
-- [ ] **Step 3:** Documentar retenção de logs e bases legais em `docs/LGPD.md`.
+- [x] **Step 3:** Documentar retenção de logs e bases legais em `docs/LGPD.md`.
 
 - [ ] **Step 4:** Commit: `feat(security): PII masking and field encryption`
 

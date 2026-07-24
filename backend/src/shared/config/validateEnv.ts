@@ -1,3 +1,4 @@
+import { assertPiiEncryptionKeyFormat } from '../crypto/fieldEncryption';
 import { logger } from '../logging/logger';
 
 const PLACEHOLDER_EXACT = new Set(['change-me', 'password', 'secret', 'root', 'aten_ai_pass']);
@@ -26,6 +27,12 @@ export function validateEnv(): void {
     errors.push('JWT_SECRET não pode ser um valor fraco/placeholder em production.');
   }
 
+  try {
+    assertPiiEncryptionKeyFormat();
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : String(err));
+  }
+
   if (isProduction) {
     const webhookSecret = (process.env.N8N_WEBHOOK_SECRET ?? '').trim();
     if (!webhookSecret || isWeakSecret(webhookSecret)) {
@@ -40,6 +47,13 @@ export function validateEnv(): void {
     const frontendUrl = (process.env.FRONTEND_URL ?? '').trim();
     if (!frontendUrl) {
       errors.push('FRONTEND_URL é obrigatório em production (CORS e links de e-mail).');
+    }
+
+    if (!(process.env.PII_ENCRYPTION_KEY ?? '').trim()) {
+      logger.warn('env.pii_encryption_recommended', {
+        message:
+          'PII_ENCRYPTION_KEY ausente: sintomas/diagnóstico/prescrição ficam em claro no MySQL. Defina com openssl rand -hex 32.'
+      });
     }
   }
 
