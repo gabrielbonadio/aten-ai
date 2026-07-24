@@ -159,7 +159,7 @@ Login/signup/refresh setam cookies `access_token` + `refresh_token` (`httpOnly`,
 
 - [x] **Step 3:** Documentar retenção de logs e bases legais em `docs/LGPD.md`.
 
-- [ ] **Step 4:** Commit: `feat(security): PII masking and field encryption`
+- [x] **Step 4:** Commit: `feat(security): PII masking and field encryption`
 
 ---
 
