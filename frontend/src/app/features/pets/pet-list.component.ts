@@ -3,6 +3,8 @@ import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
+import type { PaginationMeta } from '../../core/models/pagination.model';
+import { UI_PAGE_SIZE } from '../../core/models/pagination.model';
 import type { Pet } from '../../core/models/pet.model';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { PetService } from '../../core/services/pet.service';
@@ -10,6 +12,7 @@ import { NotificationService } from '../../shared/notifications/notification.ser
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
+import { PaginationControlsComponent } from '../../shared/ui/pagination-controls.component';
 import { PetCreateModalComponent } from './pet-create-modal.component';
 
 @Component({
@@ -22,7 +25,8 @@ import { PetCreateModalComponent } from './pet-create-modal.component';
     ThemeToggleComponent,
     PetCreateModalComponent,
     LoadErrorComponent,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
+    PaginationControlsComponent
   ],
   templateUrl: './pet-list.component.html'
 })
@@ -33,6 +37,8 @@ export class PetListComponent implements OnInit {
   readonly brand = inject(ClinicBrandingService);
 
   readonly pets = signal<Pet[]>([]);
+  readonly pageMeta = signal<PaginationMeta | null>(null);
+  readonly page = signal(1);
   readonly loading = signal(true);
   readonly loadError = signal(false);
   readonly petModalOpen = signal(false);
@@ -53,11 +59,11 @@ export class PetListComponent implements OnInit {
   loadPets(): void {
     this.loading.set(true);
     this.loadError.set(false);
-    // Garante refresh real mesmo com cache no service.
     this.petService.invalidateCache();
-    this.petService.findAll().subscribe({
-      next: (list) => {
-        this.pets.set(list);
+    this.petService.findPage(this.page(), UI_PAGE_SIZE).subscribe({
+      next: (res) => {
+        this.pets.set(res.data);
+        this.pageMeta.set(res.meta);
         this.loading.set(false);
       },
       error: () => {
@@ -65,6 +71,11 @@ export class PetListComponent implements OnInit {
         this.loadError.set(true);
       }
     });
+  }
+
+  onPageChange(nextPage: number): void {
+    this.page.set(nextPage);
+    this.loadPets();
   }
 
   openPetModal(): void {

@@ -4,8 +4,10 @@ import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   LIST_PAGE_SIZE,
+  UI_PAGE_SIZE,
   type PaginatedResponse,
-  unwrapPaginatedList
+  unwrapPaginatedList,
+  unwrapPaginatedResponse
 } from '../models/pagination.model';
 import type { CreateTutorPayload, Tutor } from '../models/tutor.model';
 
@@ -22,9 +24,35 @@ export class TutorService {
     this.cachedTutors.set(null);
   }
 
+  /** Lista paginada para a tela de tutores. */
+  findPage(
+    page = 1,
+    pageSize = UI_PAGE_SIZE,
+    search?: string
+  ): Observable<PaginatedResponse<Tutor>> {
+    let params = new HttpParams()
+      .set('page', String(page))
+      .set('pageSize', String(pageSize));
+    const q = search?.trim();
+    if (q) {
+      params = params.set('search', q);
+    }
+
+    return this.http.get<PaginatedResponse<Tutor> | Tutor[]>(this.baseUrl(), { params }).pipe(
+      map((body) => unwrapPaginatedResponse<Tutor>(body)),
+      catchError((err) => {
+        console.warn('[TutorService] Falha ao listar tutores:', err);
+        return of({
+          data: [],
+          meta: { page, pageSize, total: 0, totalPages: 0 }
+        });
+      })
+    );
+  }
+
   /**
    * Lista tutores. Opcionalmente filtra no servidor por nome/e-mail (`search`).
-   * Cache só aplica quando `search` está vazio (lista completa).
+   * Cache só aplica quando `search` está vazio (lista completa / dropdown).
    */
   findAll(search?: string): Observable<Tutor[]> {
     const q = search?.trim();

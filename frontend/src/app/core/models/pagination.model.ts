@@ -28,5 +28,29 @@ export function unwrapPaginatedList<T>(body: unknown): T[] {
   return [];
 }
 
-/** pageSize máximo aceito pelo backend. */
+export function unwrapPaginatedResponse<T>(body: unknown): PaginatedResponse<T> {
+  if (
+    body !== null &&
+    typeof body === 'object' &&
+    Array.isArray((body as PaginatedResponse<T>).data) &&
+    (body as PaginatedResponse<T>).meta
+  ) {
+    return body as PaginatedResponse<T>;
+  }
+  const data = unwrapPaginatedList<T>(body);
+  return {
+    data,
+    meta: {
+      page: 1,
+      pageSize: data.length || LIST_PAGE_SIZE,
+      total: data.length,
+      totalPages: data.length === 0 ? 0 : 1
+    }
+  };
+}
+
+/** pageSize máximo aceito pelo backend (listagens “completas” / dropdowns). */
 export const LIST_PAGE_SIZE = 100;
+
+/** pageSize padrão nas telas de lista com paginação. */
+export const UI_PAGE_SIZE = 20;

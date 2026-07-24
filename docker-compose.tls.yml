@@ -1,0 +1,38 @@
+# =============================================================================
+# Override opcional — TLS com Caddy (Let's Encrypt) para self-hosted
+# Uso:
+#   1. No .env da raiz: DOMAIN=app.seudominio.com e ACME_EMAIL=voce@email.com
+#   2. FRONTEND_URL=https://app.seudominio.com
+#   3. API_URL=https://app.seudominio.com  (mesmo host; Caddy roteia /auth,/pets,... para a API)
+#   4. docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+#
+# DNS do DOMAIN deve apontar para esta máquina (portas 80/443 abertas).
+# Em produção, prefira NÃO publicar 3000/8080 no host (remova os `ports:` do
+# frontend/backend no docker-compose.yml ou use só a rede interna).
+# =============================================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: aten-ai-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Defina DOMAIN no .env (ex.: app.seudominio.com)}
+      ACME_EMAIL: ${ACME_EMAIL:?Defina ACME_EMAIL no .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - aten-internal
+
+volumes:
+  caddy_data:
+  caddy_config:

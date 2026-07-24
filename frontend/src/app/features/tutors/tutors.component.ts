@@ -1,6 +1,9 @@
-import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
+import type { PaginationMeta } from '../../core/models/pagination.model';
+import { UI_PAGE_SIZE } from '../../core/models/pagination.model';
 import type { Tutor } from '../../core/models/tutor.model';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { TutorService } from '../../core/services/tutor.service';
@@ -8,6 +11,7 @@ import { NotificationService } from '../../shared/notifications/notification.ser
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
+import { PaginationControlsComponent } from '../../shared/ui/pagination-controls.component';
 import { TutorCreateModalComponent } from './tutor-create-modal.component';
 
 @Component({
@@ -19,16 +23,22 @@ import { TutorCreateModalComponent } from './tutor-create-modal.component';
     ThemeToggleComponent,
     TutorCreateModalComponent,
     LoadErrorComponent,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
+    PaginationControlsComponent
   ],
   templateUrl: './tutors.component.html'
 })
-export class TutorsComponent implements OnInit {
+export class TutorsComponent implements OnInit, OnDestroy {
   private readonly tutorService = inject(TutorService);
   private readonly notifications = inject(NotificationService);
   readonly brand = inject(ClinicBrandingService);
 
+  private readonly destroy$ = new Subject<void>();
+  private readonly searchInput$ = new Subject<string>();
+
   readonly tutors = signal<Tutor[]>([]);
+  readonly pageMeta = signal<PaginationMeta | null>(null);
+  readonly page = signal(1);
   readonly loading = signal(true);
   readonly loadError = signal(false);
   readonly searchQuery = signal('');
@@ -37,41 +47,37 @@ export class TutorsComponent implements OnInit {
   readonly tutorToDelete = signal<{ id: string; name: string } | null>(null);
   readonly deleting = signal(false);
 
-  readonly filteredTutors = computed(() => {
-    const q = this.searchQuery().trim().toLowerCase();
-    const list = this.tutors();
-    if (!q) return list;
-    return list.filter((t) => {
-      const name = (t.name ?? '').toLowerCase();
-      const email = (t.email ?? '').toLowerCase();
-      const phone = (t.phone ?? '').toLowerCase().replace(/\s/g, '');
-      const addr = (t.address ?? '').toLowerCase();
-      const qDigits = q.replace(/\D/g, '');
-      const phoneDigits = phone.replace(/\D/g, '');
-      return (
-        name.includes(q) ||
-        email.includes(q) ||
-        phone.includes(q) ||
-        (qDigits.length > 0 && phoneDigits.includes(qDigits)) ||
-        addr.includes(q)
-      );
-    });
-  });
+  /** Alias para o template (lista já vem filtrada do servidor). */
+  readonly filteredTutors = this.tutors;
 
   @ViewChild(TutorCreateModalComponent)
   private readonly tutorModal?: TutorCreateModalComponent;
 
   ngOnInit(): void {
+    this.searchInput$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((q) => {
+        this.searchQuery.set(q);
+        this.page.set(1);
+        this.loadTutors();
+      });
+
     this.loadTutors();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadTutors(): void {
     this.loading.set(true);
     this.loadError.set(false);
     this.tutorService.invalidateCache();
-    this.tutorService.findAll().subscribe({
-      next: (list) => {
-        this.tutors.set(list);
+    this.tutorService.findPage(this.page(), UI_PAGE_SIZE, this.searchQuery()).subscribe({
+      next: (res) => {
+        this.tutors.set(res.data);
+        this.pageMeta.set(res.meta);
         this.loading.set(false);
       },
       error: () => {
@@ -81,9 +87,14 @@ export class TutorsComponent implements OnInit {
     });
   }
 
+  onPageChange(nextPage: number): void {
+    this.page.set(nextPage);
+    this.loadTutors();
+  }
+
   onSearchInput(ev: Event): void {
     const v = (ev.target as HTMLInputElement).value;
-    this.searchQuery.set(v);
+    this.searchInput$.next(v);
   }
 
   openTutorModal(): void {

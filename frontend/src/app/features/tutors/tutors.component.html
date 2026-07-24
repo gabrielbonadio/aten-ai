@@ -157,6 +157,12 @@
           </tbody>
         </table>
       </div>
+      <app-pagination-controls
+        class="mt-4 block"
+        [meta]="pageMeta()"
+        [disabled]="loading()"
+        (pageChange)="onPageChange($event)"
+      />
     </div>
   }
 </main>

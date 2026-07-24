@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend:
-    name: Backend (tsc + jest)
+    name: Backend (tsc + jest + audit)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,11 +21,14 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - name: Security audit (high+)
+        run: npm audit --audit-level=high
+        continue-on-error: true
       - run: npx tsc --noEmit -p tsconfig.json
       - run: npm test
 
   frontend:
-    name: Frontend (test + build)
+    name: Frontend (test + build + audit)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,6 +41,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: Security audit (high+)
+        run: npm audit --audit-level=high
+        continue-on-error: true
       - name: Unit tests (ChromeHeadless)
         run: npm run test:ci
       - name: Production build

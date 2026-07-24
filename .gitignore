@@ -1,3 +1,8 @@
+# dumps / backups locais
+backups/
+*.sql
+*.sql.gz
+
 # Dependências e artefatos de build (não versionar)
 node_modules/
 dist/

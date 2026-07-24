@@ -4,8 +4,10 @@ import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   LIST_PAGE_SIZE,
+  UI_PAGE_SIZE,
   type PaginatedResponse,
-  unwrapPaginatedList
+  unwrapPaginatedList,
+  unwrapPaginatedResponse
 } from '../models/pagination.model';
 import type { CreatePetPayload, Pet } from '../models/pet.model';
 import type { Appointment } from '../models/appointment.model';
@@ -20,6 +22,25 @@ export class PetService {
     return `${environment.apiUrl.replace(/\/$/, '')}/pets`;
   }
 
+  /** Lista paginada para a tela de pets. */
+  findPage(page = 1, pageSize = UI_PAGE_SIZE): Observable<PaginatedResponse<Pet>> {
+    const params = new HttpParams()
+      .set('page', String(page))
+      .set('pageSize', String(pageSize));
+
+    return this.http.get<PaginatedResponse<Pet> | Pet[]>(this.baseUrl(), { params }).pipe(
+      map((body) => unwrapPaginatedResponse<Pet>(body)),
+      catchError((err) => {
+        console.warn('[PetService] Falha ao listar pets:', err);
+        return of({
+          data: [],
+          meta: { page, pageSize, total: 0, totalPages: 0 }
+        });
+      })
+    );
+  }
+
+  /** Lista ampla (dropdowns / cache). */
   findAll(): Observable<Pet[]> {
     const cached = this.cachedPets();
     if (cached) return of(cached);

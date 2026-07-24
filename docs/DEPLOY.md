@@ -1,123 +1,187 @@
-# Deploy demo (Onda 7) — Aten AI
+# Deploy — Aten AI
 
-Guia para colocar uma **demo pública** no ar (portfólio / entrevista), sem versionar secrets.
+Guia para colocar o Aten AI no ar **com HTTPS**, sem versionar secrets.
 
-Stack sugerida (free tier):
+Stack sugerida:
 
-| Peça | Serviço sugerido | Alternativa |
-|------|------------------|-------------|
-| MySQL | [Railway](https://railway.app) ou [Aiven](https://aiven.io) free | PlanetScale (MySQL-compatible) / Render Postgres* |
-| API (Node) | [Render](https://render.com) Web Service | Railway / Fly.io |
-| Frontend (Angular) | [Vercel](https://vercel.com) ou [Netlify](https://netlify.com) | Cloudflare Pages |
+| Peça | PaaS (recomendado para demo) | Self-hosted (VPS) |
+|------|------------------------------|-------------------|
+| MySQL | Railway / Aiven | Docker Compose (`mysql`) |
+| API (Node) | Render / Railway / Fly.io | Compose `backend` |
+| Frontend | Vercel / Netlify | Compose `frontend` + **Caddy** (TLS) |
 
-\*O backend atual usa **MySQL** (`mysql2` + Sequelize). Evite Postgres sem migration de dialeto.
+O backend usa **MySQL** (`mysql2` + Sequelize). Evite Postgres sem migration de dialeto.
 
-> Nesta onda **não** é obrigatório ligar n8n/WhatsApp reais. A demo do portal + API + login já basta para entrevista.
+---
+
+## HTTPS (obrigatório em produção)
+
+Não exponha a API ou o portal só em HTTP na internet.
+
+### Opção A — PaaS
+
+1. Configure **custom domain** no Render/Vercel/Netlify.
+2. Ative HTTPS (os provedores emitem certificado automaticamente).
+3. Defina:
+   - `FRONTEND_URL=https://seu-portal.exemplo.com` (sem `/` final)
+   - `API_URL=https://sua-api.exemplo.com` (build do frontend)
+4. Redeploy. Confirme cadeado no browser e HSTS no painel do provedor (quando disponível).
+
+### Opção B — VPS + Caddy (Let's Encrypt)
+
+Arquivos no repo:
+
+- `docker-compose.yml` — app
+- `docker-compose.tls.yml` — serviço Caddy
+- `deploy/Caddyfile` — rotas SPA + API no mesmo domínio
+
+Passos:
+
+1. DNS A/AAAA de `DOMAIN` → IP da VPS (portas **80** e **443** abertas).
+2. No `.env` da raiz:
+
+```env
+DOMAIN=app.seudominio.com
+ACME_EMAIL=voce@seudominio.com
+FRONTEND_URL=https://app.seudominio.com
+API_URL=https://app.seudominio.com
+JWT_SECRET=...   # ≥ 32 chars, sem placeholder
+N8N_WEBHOOK_SECRET=...
+DB_PASS=...
+MYSQL_ROOT_PASSWORD=...
+```
+
+3. Subir:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+```
+
+4. Em produção, evite publicar `3000`/`8080` no host — só o Caddy precisa de 80/443.
+
+5. Smoke: `https://$DOMAIN/health` e login no portal.
 
 ---
 
 ## O que NÃO colocar no repositório
 
 - `.env` com `JWT_SECRET`, `DB_PASS`, `RESEND_API_KEY`, `N8N_WEBHOOK_SECRET`
-- dumps `.sql` / `.db` com dados reais de clínicas
+- dumps `.sql` / pasta `backups/` com dados reais
 - tokens GitHub / chaves Resend
 
-Configure tudo no painel do provedor (Environment Variables).
+Configure secrets no painel do provedor ou no `.env` local (gitignored).
 
 ---
 
 ## Checklist de variáveis
 
-### Backend (Render / Railway)
+### Backend
 
-| Variável | Exemplo / nota |
-|----------|----------------|
+| Variável | Nota |
+|----------|------|
 | `NODE_ENV` | `production` |
-| `PORT` | Render injeta automaticamente; não force se o painel já define |
-| `DB_HOST` | Host do MySQL gerenciado |
-| `DB_PORT` | `3306` (ou a do provedor) |
-| `DB_USER` / `DB_PASS` / `DB_NAME` | Credenciais do MySQL |
-| `JWT_SECRET` | String longa **nova**, só de produção (≥ 32 chars) |
-| `JWT_EXPIRES_IN` | `7d` |
-| `FRONTEND_URL` | URL pública do portal (ex.: `https://aten-ai.vercel.app`) — usada em CORS e e-mails |
-| `EMAIL_FROM` / `RESEND_API_KEY` | Opcional na demo; reset de senha sem isso só loga no console |
-| `N8N_*` | Deixe vazio na demo se não for ligar WhatsApp |
+| `PORT` | PaaS injeta; Compose usa `3000` |
+| `DB_*` | MySQL gerenciado ou Compose |
+| `DB_POOL_MAX` | Ajuste conforme réplicas (padrão Compose: 10) |
+| `JWT_SECRET` | ≥ 32 chars, **nunca** placeholder |
+| `JWT_EXPIRES_IN` | `1h` (refresh cobre a sessão longa) |
+| `FRONTEND_URL` | URL **https** do portal (CORS + e-mails) |
+| `ENABLE_IN_PROCESS_JOBS` | `true` numa réplica; `false` + `npm run worker` se scale-out |
+| `EMAIL_FROM` / `RESEND_API_KEY` | Opcional |
+| `N8N_*` | Vazio se não usar WhatsApp |
 
-### Frontend (Vercel / Netlify)
+### Frontend (build)
 
-No **build**, o Angular production usa `environment.production.ts` com placeholder `__API_URL__`.
-
-Opções:
-
-1. **Build arg / replace no CI** (recomendado no Docker — já existe `sync`/nginx no compose), ou  
-2. **Build local/CI com replace** do placeholder pela URL da API, ou  
-3. Temporário: editar `environment.production.ts` **só no painel de build** via script:
-
-```bash
-# Exemplo em build command (Vercel)
-node -e "const fs=require('fs');const u=process.env.API_URL;fs.writeFileSync('src/environments/environment.production.ts',\`export const environment={production:true,apiUrl:'\${u}'};\`);" && npm run build
-```
-
-Defina `API_URL=https://sua-api.onrender.com` (sem barra no final).
+| Variável | Nota |
+|----------|------|
+| `API_URL` | URL **https** da API (sem barra final). No Caddy same-host, use o mesmo `DOMAIN`. |
 
 ---
 
-## Passo a passo — Render (API) + MySQL
+## Passo a passo — Render (API) + Vercel (portal)
 
-### 1. Banco MySQL
+### 1. MySQL
 
-1. Crie um MySQL no Railway/Aiven/Render (se disponível).
-2. Anote host, porta, user, password, database.
-3. Libere acesso externo (IP allowlist / “public network”) para o serviço da API.
+Crie MySQL (Railway/Aiven). Anote host, porta, user, password, database.
 
 ### 2. Web Service (backend)
 
-1. New → Web Service → conecte o repo `gabrielbonadio/aten-ai`.
-2. **Root Directory:** `backend`
-3. **Build Command:** `npm ci && npm run build`
-4. **Start Command:** `npm run start:prod`  
-   (`start:prod` já roda `sequelize-cli db:migrate` + `node dist/server.js`)
-5. Preencha as env vars da tabela acima.
-6. Deploy → teste: `GET https://<sua-api>/health`
+1. Root Directory: `backend`
+2. Build: `npm ci && npm run build`
+3. Start: `npm run start:prod` (migrate + server)
+4. Env vars da tabela acima (`FRONTEND_URL` = URL https do Vercel)
+5. `GET https://<api>/health`
 
 ### 3. Frontend (Vercel)
 
-1. Import repo → **Root Directory:** `frontend`
-2. Framework: Angular (ou Other)
-3. Build: use o one-liner de replace + `npm run build` (seção acima)
-4. Output: `dist/aten-ai-portal/browser` (Angular 17 application builder)  
-   Confirme a pasta após um `npm run build` local — se for `dist/aten-ai-portal`, ajuste.
-5. Env: `API_URL=https://<sua-api>.onrender.com`
-6. Deploy → abra a URL → login/signup.
+1. Root Directory: `frontend`
+2. Build com replace de `API_URL` (ver abaixo) + `npm run build`
+3. Output: `dist/aten-ai-portal/browser`
+4. `API_URL=https://<sua-api>.onrender.com`
 
-### 4. Ligar CORS
+```bash
+node -e "const fs=require('fs');const u=process.env.API_URL;fs.writeFileSync('src/environments/environment.production.ts',\`export const environment={production:true,apiUrl:'\${u}'};\`);" && npm run build
+```
 
-1. No backend, `FRONTEND_URL` = URL exata do Vercel (https, sem `/` final).
-2. Redeploy da API.
-3. No browser (DevTools → Network), confirme que as chamadas à API não falham por CORS.
+### 4. CORS
+
+`FRONTEND_URL` no backend = URL exata do portal (https, sem `/`). Redeploy da API.
+
+---
+
+## Backups MySQL
+
+Scripts no repo:
+
+- Linux/macOS: `scripts/backup-mysql.sh`
+- Windows: `scripts/backup-mysql.ps1`
+
+```bash
+# Linux (Compose rodando)
+chmod +x scripts/backup-mysql.sh
+./scripts/backup-mysql.sh
+```
+
+```powershell
+# Windows
+.\scripts\backup-mysql.ps1
+```
+
+Dumps em `backups/aten_ai_*.sql.gz` (pasta gitignored). Retenção padrão: **7 dias**.
+
+### Restore
+
+```bash
+gunzip -c backups/aten_ai_YYYYMMDDTHHMMSSZ.sql.gz | \
+  docker compose exec -T mysql mysql -u"$DB_USER" -p"$DB_PASS" "$DB_NAME"
+```
+
+Agende no cron (Linux) ou Task Scheduler (Windows) diariamente.
 
 ---
 
 ## Smoke test pós-deploy
 
 1. `GET /health` → 200  
-2. `POST /auth/signup` (tenant + admin)  
-3. `POST /auth/login` → JWT  
-4. Abrir portal → dashboard com token  
-5. (Opcional) Swagger: `https://<api>/api-docs`
+2. Signup / login no portal (access + refresh)  
+3. Listar pets / tutores / agenda  
+4. (Opcional) n8n: header `Authorization: Bearer <N8N_WEBHOOK_SECRET>` alinhado ao `.env`
+
+Swagger `/api-docs` fica **desligado** em `NODE_ENV=production`.
 
 ---
 
 ## Custos e limites free tier
 
-- Render free **dorme** após inatividade (~50s cold start).
-- MySQL free pode limitar conexões — o pool do Sequelize já está baixo (`max: 5`).
+- Render free pode “dormir” (cold start).
+- Ajuste `DB_POOL_MAX` se houver várias réplicas.
 - Não use a demo com dados reais de pacientes/clientes (LGPD).
 
 ---
 
-## Depois do deploy (opcional)
+## Depois do go-live
 
-- Custom domain + HTTPS  
-- Ligar `N8N_WEBHOOK_*` só quando o n8n estiver público  
-- Branch protection / CI já existe em `.github/workflows/ci.yml`
+- [ ] Backup automático testado (restore feito ao menos uma vez)
+- [ ] Domínio custom + HTTPS
+- [ ] `N8N_WEBHOOK_SECRET` na UI do n8n (passo externo)
+- [ ] CI com `npm audit` + Dependabot (`.github/`)

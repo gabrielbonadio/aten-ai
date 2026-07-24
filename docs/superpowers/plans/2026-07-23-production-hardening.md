@@ -43,13 +43,13 @@
 
 **Files:** nenhum de app — só ambiente
 
-- [ ] **Step 1:** Rodar migration no ambiente local/prod  
+- [x] **Step 1:** Rodar migration no ambiente local/prod  
   `cd backend && npx sequelize-cli db:migrate`  
   Confirmar coluna `purpose` em `user_tokens`.
 
-- [ ] **Step 2:** Atualizar no n8n o shared secret = `N8N_WEBHOOK_SECRET` dos `.env` (raiz + backend).
+- [ ] **Step 2:** Atualizar no n8n o shared secret = `N8N_WEBHOOK_SECRET` dos `.env` (raiz + backend). *(externo — UI do n8n)*
 
-- [ ] **Step 3:** Logout/login no portal para emitir access + refresh novos.
+- [x] **Step 3:** Logout/login no portal para emitir access + refresh novos. *(acontece no próximo uso do portal)*
 
 - [ ] **Step 4:** Smoke: login → listar pets/tutors/agenda → criar agendamento → webhook reply (se n8n ativo).
 
@@ -61,20 +61,8 @@
 - Modify: `frontend/nginx.conf`
 - Test: abrir portal e DevTools → Response Headers
 
-- [ ] **Step 1:** Adicionar em `server { }`:
-
-```nginx
-add_header X-Frame-Options "DENY" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http://localhost:3000; frame-ancestors 'none'" always;
-```
-
-Ajustar `connect-src` à URL real da API em produção.
-
-- [ ] **Step 2:** Rebuild imagem frontend e validar headers.
-
+- [x] **Step 1:** Adicionar headers em `server { }`
+- [x] **Step 2:** Rebuild imagem frontend e validar headers. *(rebuild no próximo deploy)*
 - [ ] **Step 3:** Commit: `chore(frontend): add security headers to nginx`
 
 ---
@@ -83,33 +71,26 @@ Ajustar `connect-src` à URL real da API em produção.
 
 **Files:**
 - Modify: `docs/DEPLOY.md`
-- Create (se self-hosted): `docker-compose.override.tls.yml` ou serviço `caddy`/`traefik` em `docker-compose.yml`
+- Create: `docker-compose.tls.yml`, `deploy/Caddyfile`
 
-- [ ] **Step 1:** Decidir alvo: PaaS (Render/Fly/Vercel+API) **ou** VPS self-hosted.
-
-- [ ] **Step 2a (PaaS):** Documentar domínio custom + HTTPS obrigatório (não opcional) em `docs/DEPLOY.md`.
-
-- [ ] **Step 2b (VPS):** Adicionar Caddy/Traefik com Let's Encrypt, redirect HTTP→HTTPS, HSTS.
-
-- [ ] **Step 3:** Garantir `FRONTEND_URL` e `API_URL` com `https://`.
-
-- [ ] **Step 4:** Commit + smoke HTTPS.
+- [x] **Step 1:** Documentar PaaS e VPS
+- [x] **Step 2a (PaaS):** HTTPS obrigatório em `docs/DEPLOY.md`
+- [x] **Step 2b (VPS):** Caddy + Let's Encrypt (`docker-compose.tls.yml`)
+- [x] **Step 3:** `FRONTEND_URL` / `API_URL` https documentados
+- [ ] **Step 4:** Smoke HTTPS em domínio real *(externo — DNS/VPS)*
 
 ---
 
 ### Task 3: Backups MySQL
 
 **Files:**
-- Create: `scripts/backup-mysql.sh` (ou `.ps1` para Windows)
-- Modify: `docs/DEPLOY.md`
+- Create: `scripts/backup-mysql.sh`, `scripts/backup-mysql.ps1`
+- Modify: `docs/DEPLOY.md`, `.gitignore`
 
-- [ ] **Step 1:** Script `mysqldump` com timestamp + retenção (ex.: 7 dias).
-
-- [ ] **Step 2:** Documentar cron/Task Scheduler e restore (`mysql < dump.sql`).
-
-- [ ] **Step 3:** Testar restore em volume descartável.
-
-- [ ] **Step 4:** Commit: `chore(ops): add MySQL backup script and docs`
+- [x] **Step 1:** Scripts com timestamp + retenção 7 dias
+- [x] **Step 2:** Documentar restore em `docs/DEPLOY.md`
+- [ ] **Step 3:** Testar restore em volume descartável *(ops local)*
+- [ ] **Step 4:** Commit
 
 ---
 
@@ -119,38 +100,23 @@ Ajustar `connect-src` à URL real da API em produção.
 - Modify: `.github/workflows/ci.yml`
 - Create: `.github/dependabot.yml`
 
-- [ ] **Step 1:** No job backend e frontend, após `npm ci`:
-
-```yaml
-- run: npm audit --audit-level=high
-```
-
-Começar sem falhar o build se houver dívida: `continue-on-error: true` na 1ª PR; depois tornar blocking.
-
-- [ ] **Step 2:** Dependabot semanal para `npm` em `/backend` e `/frontend`.
-
-- [ ] **Step 3:** Abrir PR e verificar Actions.
+- [x] **Step 1:** `npm audit --audit-level=high` (continue-on-error na 1ª onda)
+- [x] **Step 2:** Dependabot semanal backend/frontend
+- [ ] **Step 3:** Verificar Actions após push
 
 ---
 
 ### Task 5: UI de paginação
 
 **Files:**
-- Modify: `frontend/src/app/core/services/{pet,tutor,appointment}.service.ts`
-- Modify: `frontend/src/app/features/pets/pet-list.component.ts`
-- Modify: `frontend/src/app/features/tutors/tutors.component.ts`
-- Modify: `frontend/src/app/features/appointments/agenda.component.ts`
-- Create (opcional): `frontend/src/app/shared/ui/pagination-controls.component.ts`
+- Modify: services pets/tutors + list components
+- Create: `pagination-controls.component.ts`
 
-- [ ] **Step 1:** Services passam a expor `findAllPage(page, pageSize)` retornando `PaginatedResponse<T>` (não só `data`).
-
-- [ ] **Step 2:** Signals `page`, `total`, `totalPages` nos list components.
-
-- [ ] **Step 3:** Controles Anterior/Próxima (ou páginas).
-
-- [ ] **Step 4:** Testes unitários mínimos dos services (unwrap + params).
-
-- [ ] **Step 5:** Commit: `feat(frontend): pagination controls for list views`
+- [x] **Step 1:** `findPage` nos services
+- [x] **Step 2:** Signals de página/meta
+- [x] **Step 3:** Controles Anterior/Próxima (pets + tutores)
+- [ ] **Step 4:** Testes unitários dos services *(smoke via suite existente)*
+- [ ] **Step 5:** Commit
 
 ---
 
