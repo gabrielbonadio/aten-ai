@@ -52,11 +52,12 @@ describe('authInterceptor', () => {
     httpMock.verify();
   });
 
-  it('injeta Authorization: Bearer <JWT> nas requisições à API', () => {
+  it('injeta Authorization: Bearer <JWT> e withCredentials nas requisições à API', () => {
     http.get(`${apiBase}/pets`).subscribe();
 
     const req = httpMock.expectOne(`${apiBase}/pets`);
     expect(req.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+    expect(req.request.withCredentials).toBeTrue();
     req.flush([]);
   });
 
@@ -83,17 +84,20 @@ describe('authInterceptor', () => {
     req.flush({});
   });
 
-  it('não injeta Authorization quando não há token', () => {
+  it('não injeta Authorization quando não há token em memória (cookies cobrem)', () => {
     authService.getToken.and.returnValue(null);
 
     http.get(`${apiBase}/pets`).subscribe();
 
     const req = httpMock.expectOne(`${apiBase}/pets`);
     expect(req.request.headers.has('Authorization')).toBeFalse();
+    expect(req.request.withCredentials).toBeTrue();
     req.flush([]);
   });
 
-  it('faz logout e redireciona para /login em 401 sem refresh token', () => {
+  it('tenta refresh e faz logout se o refresh falhar', () => {
+    authService.refresh.and.returnValue(throwError(() => ({ status: 401 })));
+
     http.get(`${apiBase}/pets`).subscribe({
       next: () => fail('deveria falhar com 401'),
       error: (err) => {
@@ -104,15 +108,15 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne(`${apiBase}/pets`);
     req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
 
+    expect(authService.refresh).toHaveBeenCalled();
     expect(authService.logout).toHaveBeenCalledWith({ reason: 'session_expired' });
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 
-  it('tenta refresh e reenvia a request em 401 com refresh token válido', () => {
+  it('tenta refresh e reenvia a request em 401 com refresh cookie válido', () => {
     const newToken = buildValidJwt({ tenantId, sub: 'refreshed' });
     let currentToken: string | null = token;
     authService.getToken.and.callFake(() => currentToken);
-    authService.getRefreshToken.and.returnValue('refresh-token-value');
     authService.refresh.and.callFake(() => {
       currentToken = newToken;
       return of({
@@ -142,28 +146,10 @@ describe('authInterceptor', () => {
 
     const retry = httpMock.expectOne(`${apiBase}/pets`);
     expect(retry.request.headers.get('Authorization')).toBe(`Bearer ${newToken}`);
+    expect(retry.request.withCredentials).toBeTrue();
     retry.flush([{ id: '1' }]);
 
     expect(authService.logout).not.toHaveBeenCalled();
-  });
-
-  it('faz logout quando o refresh falha', () => {
-    authService.getRefreshToken.and.returnValue('refresh-token-value');
-    authService.refresh.and.returnValue(throwError(() => ({ status: 401 })));
-
-    http.get(`${apiBase}/pets`).subscribe({
-      next: () => fail('deveria falhar'),
-      error: () => {
-        // expected
-      }
-    });
-
-    const req = httpMock.expectOne(`${apiBase}/pets`);
-    req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
-
-    expect(authService.refresh).toHaveBeenCalled();
-    expect(authService.logout).toHaveBeenCalledWith({ reason: 'session_expired' });
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
 
   it('não faz logout automático em 401 do endpoint de login', () => {
@@ -178,6 +164,7 @@ describe('authInterceptor', () => {
     req.flush({ message: 'Credenciais inválidas' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(authService.logout).not.toHaveBeenCalled();
+    expect(authService.refresh).not.toHaveBeenCalled();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
@@ -200,6 +187,6 @@ describe('authInterceptor', () => {
     req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(authService.logout).not.toHaveBeenCalled();
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(authService.refresh).not.toHaveBeenCalled();
   });
 });

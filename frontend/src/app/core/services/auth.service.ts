@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { isJwtExpired } from '../utils/jwt.util';
 import { setAuthNotice, type LogoutReason } from '../utils/auth-notice.util';
@@ -37,140 +37,187 @@ export interface LoginPayload {
   password: string;
 }
 
-/** Chave principal (comum em tutoriais); mantemos compatibilidade com a chave antiga. */
-const STORAGE_KEY_PRIMARY = 'token';
-const STORAGE_KEY_LEGACY = 'aten-ai.access_token';
-const STORAGE_KEY_REFRESH = 'aten-ai.refresh_token';
 const STORAGE_KEY_USER = 'user_data';
+const STORAGE_KEY_SESSION = 'aten-ai.session';
+/** Chaves legadas — limpas no login para sair do modelo localStorage de JWT. */
+const LEGACY_TOKEN_KEYS = ['token', 'aten-ai.access_token', 'aten-ai.refresh_token'] as const;
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
 
-  // Estado reativo para avisar o Angular se o usuário está logado
-  private loggedIn = new BehaviorSubject<boolean>(this.isTokenValid());
+  /** Access JWT só em memória (cookie httpOnly é a fonte da verdade após F5). */
+  private accessTokenMemory: string | null = null;
+
+  private loggedIn = new BehaviorSubject<boolean>(this.hasSessionFlag());
   isLoggedIn$ = this.loggedIn.asObservable();
 
   private apiBase(): string {
     return environment.apiUrl.replace(/\/$/, '');
   }
 
+  private httpOpts() {
+    return { withCredentials: true as const };
+  }
+
   private persistSession(response: AuthResponse): void {
-    this.setToken(response.token);
-    this.setRefreshToken(response.refreshToken);
+    this.accessTokenMemory = response.token.trim();
     this.setUserData(response.user);
+    this.setSessionFlag(true);
+    this.clearLegacyTokenStorage();
     this.loggedIn.next(true);
+  }
+
+  private clearLocalSession(): void {
+    this.accessTokenMemory = null;
+    this.clearLegacyTokenStorage();
+    try {
+      localStorage.removeItem(STORAGE_KEY_USER);
+      sessionStorage.removeItem(STORAGE_KEY_SESSION);
+    } catch {
+      // ignore
+    }
+    this.loggedIn.next(false);
+  }
+
+  private setSessionFlag(active: boolean): void {
+    try {
+      if (active) {
+        sessionStorage.setItem(STORAGE_KEY_SESSION, '1');
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY_SESSION);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private hasSessionFlag(): boolean {
+    try {
+      return sessionStorage.getItem(STORAGE_KEY_SESSION) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  private clearLegacyTokenStorage(): void {
+    try {
+      for (const key of LEGACY_TOKEN_KEYS) {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   /** Cadastro multi-tenant: cria clínica + admin e salva a sessão. */
   signUp(payload: SignUpPayload): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiBase()}/auth/signup`, payload).pipe(
-      tap((response) => this.persistSession(response))
-    );
+    return this.http
+      .post<AuthResponse>(`${this.apiBase()}/auth/signup`, payload, this.httpOpts())
+      .pipe(tap((response) => this.persistSession(response)));
   }
 
   /** Realiza o login e salva os dados na sessão. */
   login(credentials: LoginPayload): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiBase()}/auth/login`, credentials).pipe(
-      tap((response) => this.persistSession(response))
-    );
-  }
-
-  /**
-   * Renova access + refresh tokens (rotação no servidor).
-   * Usado pelo interceptor em 401.
-   */
-  refresh(): Observable<AuthResponse> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('Refresh token ausente.');
-    }
     return this.http
-      .post<AuthResponse>(`${this.apiBase()}/auth/refresh`, { refreshToken })
+      .post<AuthResponse>(`${this.apiBase()}/auth/login`, credentials, this.httpOpts())
       .pipe(tap((response) => this.persistSession(response)));
   }
 
   /**
-   * Solicita e-mail de recuperação.
-   * O backend sempre responde sucesso (204) para não vazar se o e-mail existe.
+   * Renova access + refresh (cookies httpOnly + JSON).
+   * Body vazio: o refresh vem do cookie quando o front não guarda o token.
    */
-  forgotPassword(email: string): Observable<void> {
-    return this.http.post<void>(`${this.apiBase()}/auth/forgot-password`, { email });
-  }
-
-  /** Redefine a senha com o token recebido por e-mail. */
-  resetPassword(token: string, password: string): Observable<void> {
-    return this.http.post<void>(`${this.apiBase()}/auth/reset-password`, { token, password });
+  refresh(): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.apiBase()}/auth/refresh`, {}, this.httpOpts())
+      .pipe(tap((response) => this.persistSession(response)));
   }
 
   /**
-   * Desloga o usuário: limpa storage local e tenta revogar o refresh no servidor.
-   * @param options.reason `session_expired` grava aviso para a tela de login.
+   * Restaura sessão após F5: /auth/me via cookie; se 401, tenta refresh.
+   * Sem flag de sessão, não chama a API (evita 401 no primeiro acesso ao login).
+   */
+  hydrateSession(): Observable<boolean> {
+    if (!this.hasSessionFlag() && !this.accessTokenMemory) {
+      return of(false);
+    }
+
+    return this.getMe().pipe(
+      tap(() => {
+        this.setSessionFlag(true);
+        this.loggedIn.next(true);
+      }),
+      map(() => true),
+      catchError(() =>
+        this.refresh().pipe(
+          switchMap(() => this.getMe()),
+          tap(() => {
+            this.setSessionFlag(true);
+            this.loggedIn.next(true);
+          }),
+          map(() => true),
+          catchError(() => {
+            this.clearLocalSession();
+            return of(false);
+          })
+        )
+      )
+    );
+  }
+
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.apiBase()}/auth/forgot-password`,
+      { email },
+      this.httpOpts()
+    );
+  }
+
+  resetPassword(token: string, password: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.apiBase()}/auth/reset-password`,
+      { token, password },
+      this.httpOpts()
+    );
+  }
+
+  /**
+   * Desloga: limpa estado local e revoga refresh (cookie / best-effort).
    */
   logout(options?: { reason?: LogoutReason }): void {
-    const refreshToken = this.getRefreshToken();
-    this.clearToken();
-    this.loggedIn.next(false);
+    this.clearLocalSession();
     setAuthNotice(options?.reason === 'session_expired' ? 'session_expired' : 'manual');
 
-    if (refreshToken) {
-      this.http.post<void>(`${this.apiBase()}/auth/logout`, { refreshToken }).subscribe({
-        error: () => {
-          // Revogação best-effort — sessão local já foi limpa.
-        }
-      });
-    }
+    this.http.post<void>(`${this.apiBase()}/auth/logout`, {}, this.httpOpts()).subscribe({
+      error: () => {
+        // Revogação best-effort
+      }
+    });
   }
 
-  /** Dados do profissional logado (nome para receituário, etc.). */
   getMe(): Observable<{ user: CurrentUser }> {
-    return this.http.get<{ user: CurrentUser }>(`${this.apiBase()}/auth/me`);
+    return this.http.get<{ user: CurrentUser }>(`${this.apiBase()}/auth/me`, this.httpOpts()).pipe(
+      tap((res) => this.setUserData(res.user))
+    );
   }
 
-  /** Token atual persistido no localStorage após login. */
+  /** Access token em memória (Bearer opcional). Cookie httpOnly cobre o auth real. */
   getToken(): string | null {
-    try {
-      const primary = localStorage.getItem(STORAGE_KEY_PRIMARY);
-      if (primary?.trim()) {
-        return primary.trim();
-      }
-      const legacy = localStorage.getItem(STORAGE_KEY_LEGACY);
-      if (legacy?.trim()) {
-        return legacy.trim();
-      }
-    } catch {
-      // storage indisponível (ex.: modo privado restrito)
-    }
+    return this.accessTokenMemory;
+  }
 
+  /** Refresh não fica acessível ao JS (só cookie). Mantido por compat de testes/interceptor. */
+  getRefreshToken(): string | null {
     return null;
   }
 
-  getRefreshToken(): string | null {
-    try {
-      const value = localStorage.getItem(STORAGE_KEY_REFRESH);
-      return value?.trim() ? value.trim() : null;
-    } catch {
-      return null;
-    }
-  }
-
   setToken(token: string): void {
-    const v = token.trim();
-    try {
-      localStorage.setItem(STORAGE_KEY_PRIMARY, v);
-      localStorage.setItem(STORAGE_KEY_LEGACY, v);
-    } catch {
-      // ignore
-    }
+    this.accessTokenMemory = token.trim();
   }
 
-  setRefreshToken(refreshToken: string): void {
-    const v = refreshToken.trim();
-    try {
-      localStorage.setItem(STORAGE_KEY_REFRESH, v);
-    } catch {
-      // ignore
-    }
+  setRefreshToken(_refreshToken: string): void {
+    // no-op — refresh só no cookie httpOnly
   }
 
   private setUserData(user: CurrentUser): void {
@@ -182,27 +229,20 @@ export class AuthService {
   }
 
   clearToken(): void {
-    try {
-      localStorage.removeItem(STORAGE_KEY_PRIMARY);
-      localStorage.removeItem(STORAGE_KEY_LEGACY);
-      localStorage.removeItem(STORAGE_KEY_REFRESH);
-      localStorage.removeItem(STORAGE_KEY_USER);
-    } catch {
-      // ignore
-    }
+    this.clearLocalSession();
   }
 
   hasToken(): boolean {
-    return this.getToken() !== null;
+    return this.accessTokenMemory !== null || this.hasSessionFlag();
   }
 
-  /** Verifica presença do token e se o JWT ainda não expirou (sem validar assinatura). */
+  /**
+   * Sessão válida: flag de sessão (cookie) ou JWT em memória ainda não expirado.
+   */
   isTokenValid(): boolean {
-    const token = this.getToken();
-    if (!token) {
-      return false;
+    if (this.accessTokenMemory && !isJwtExpired(this.accessTokenMemory)) {
+      return true;
     }
-
-    return !isJwtExpired(token);
+    return this.hasSessionFlag();
   }
 }

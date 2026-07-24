@@ -22,7 +22,7 @@ export class AppComponent implements OnInit {
   constructor(private readonly _theme: ThemeService) {}
 
   ngOnInit(): void {
-    if (this.auth.getToken()) {
+    if (this.auth.isTokenValid()) {
       this.branding.refresh();
     }
   }

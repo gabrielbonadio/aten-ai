@@ -2,15 +2,34 @@ import { NextFunction, Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
 import authService from '../services/AuthService';
 import userRepository from '../repositories/UserRepository';
+import {
+  clearAuthCookies,
+  REFRESH_COOKIE,
+  setAuthCookies
+} from '../utils/authCookies';
+
+function resolveRefreshToken(req: Request): string | null {
+  const fromBody = (req.body as { refreshToken?: unknown })?.refreshToken;
+  if (typeof fromBody === 'string' && fromBody.trim().length >= 32) {
+    return fromBody.trim();
+  }
+  const fromCookie = req.cookies?.[REFRESH_COOKIE];
+  if (typeof fromCookie === 'string' && fromCookie.trim().length >= 32) {
+    return fromCookie.trim();
+  }
+  return null;
+}
 
 class AuthController {
   async signUp(req: Request, res: Response): Promise<void> {
     const result = await authService.signUp(req.body);
+    setAuthCookies(res, result.token, result.refreshToken);
     res.status(201).json(result);
   }
 
   async login(req: Request, res: Response): Promise<void> {
     const result = await authService.login(req.body);
+    setAuthCookies(res, result.token, result.refreshToken);
     res.status(200).json(result);
   }
 
@@ -27,14 +46,21 @@ class AuthController {
   }
 
   async refresh(req: Request, res: Response): Promise<void> {
-    const { refreshToken } = req.body as { refreshToken: string };
+    const refreshToken = resolveRefreshToken(req);
+    if (!refreshToken) {
+      throw new AppError('Refresh token não informado.', 401);
+    }
     const result = await authService.refresh(refreshToken);
+    setAuthCookies(res, result.token, result.refreshToken);
     res.status(200).json(result);
   }
 
   async logout(req: Request, res: Response): Promise<void> {
-    const { refreshToken } = req.body as { refreshToken: string };
-    await authService.logout(refreshToken);
+    const refreshToken = resolveRefreshToken(req);
+    if (refreshToken) {
+      await authService.logout(refreshToken);
+    }
+    clearAuthCookies(res);
     res.status(204).send();
   }
 

@@ -32,9 +32,9 @@ export const resetPasswordSchema = Joi.object({
 });
 
 export const refreshTokenSchema = Joi.object({
-  refreshToken: Joi.string().trim().min(32).required()
+  refreshToken: Joi.string().trim().min(32).optional()
 });
 
 export const logoutSchema = Joi.object({
-  refreshToken: Joi.string().trim().min(32).required()
+  refreshToken: Joi.string().trim().min(32).optional()
 });

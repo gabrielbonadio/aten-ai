@@ -1,4 +1,5 @@
 import express, { Application } from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
@@ -40,10 +41,11 @@ class App {
         })
       );
     } else {
-      // Dev sem FRONTEND_URL: permissivo apenas fora de production.
-      this.express.use(cors());
+      // Dev sem FRONTEND_URL: origin refletida + credentials (cookies).
+      this.express.use(cors({ origin: true, credentials: true }));
     }
 
+    this.express.use(cookieParser());
     this.express.use(express.json({ limit: '100kb' }));
     this.express.use(express.urlencoded({ extended: true, limit: '100kb' }));
   }

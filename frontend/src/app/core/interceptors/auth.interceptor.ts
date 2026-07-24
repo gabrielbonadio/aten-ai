@@ -44,8 +44,8 @@ function forceSessionExpired(
 }
 
 /**
- * Adiciona `Authorization: Bearer <token>` nas requisições ao backend.
- * Em 401, tenta renovar a sessão via refresh token antes de forçar logout.
+ * Envia cookies (`withCredentials`) e Bearer opcional (memória).
+ * Em 401, tenta `/auth/refresh` via cookie httpOnly antes de forçar logout.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -57,24 +57,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isApi = req.url.startsWith(base);
   const isAuthPublic = isAuthPublicUrl(req.url, base);
 
-  const reqWithAuth =
-    token && isApi && !isAuthPublic
-      ? req.clone({
-          setHeaders: {
-            Authorization: `Bearer ${token}`
-          }
-        })
-      : req;
+  let reqToSend = req;
+  if (isApi) {
+    const headers: Record<string, string> = {};
+    if (token && !isAuthPublic) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    reqToSend = req.clone({
+      withCredentials: true,
+      setHeaders: headers
+    });
+  }
 
-  return next(reqWithAuth).pipe(
+  return next(reqToSend).pipe(
     catchError((err: unknown) => {
       if (!(isApi && !isAuthPublic && err instanceof HttpErrorResponse && err.status === 401)) {
-        return throwError(() => err);
-      }
-
-      const refreshToken = auth.getRefreshToken();
-      if (!refreshToken) {
-        forceSessionExpired(auth, branding, router);
         return throwError(() => err);
       }
 
@@ -87,11 +84,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
             isRefreshing = false;
             refreshDone$.next(true);
             const newToken = auth.getToken();
-            const retryReq = newToken
-              ? req.clone({
-                  setHeaders: { Authorization: `Bearer ${newToken}` }
-                })
-              : req;
+            const retryReq = req.clone({
+              withCredentials: true,
+              setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {}
+            });
             return next(retryReq);
           }),
           catchError((refreshErr: unknown) => {
@@ -108,11 +104,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         take(1),
         switchMap(() => {
           const newToken = auth.getToken();
-          const retryReq = newToken
-            ? req.clone({
-                setHeaders: { Authorization: `Bearer ${newToken}` }
-              })
-            : req;
+          const retryReq = req.clone({
+            withCredentials: true,
+            setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {}
+          });
           return next(retryReq);
         })
       );
