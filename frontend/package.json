@@ -18,7 +18,7 @@
     "@angular/compiler": "^17.3.0",
     "@angular/core": "^17.3.0",
     "@angular/forms": "^17.3.0",
-    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser": "^22.0.8",
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
     "@sentry/browser": "^9.47.1",
