@@ -19,6 +19,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 ARG API_URL=http://localhost:3000
+ARG SENTRY_DSN=
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json angular.json tsconfig.json tsconfig.app.json ./
@@ -26,13 +27,16 @@ COPY tailwind.config.js postcss.config.js ./
 COPY src ./src
 COPY scripts ./scripts
 
-RUN API_URL="${API_URL}" node -e "\
+RUN API_URL="${API_URL}" SENTRY_DSN="${SENTRY_DSN}" node -e "\
   const fs = require('fs'); \
   const path = 'src/environments/environment.production.ts'; \
   const url = process.env.API_URL || 'http://localhost:3000'; \
-  const content = fs.readFileSync(path, 'utf8').replace('__API_URL__', url.replace(/'/g, \"\\\\'\")); \
+  const dsn = process.env.SENTRY_DSN || ''; \
+  let content = fs.readFileSync(path, 'utf8'); \
+  content = content.replace('__API_URL__', url.replace(/'/g, \"\\\\'\")); \
+  content = content.replace('__SENTRY_DSN__', dsn.replace(/'/g, \"\\\\'\")); \
   fs.writeFileSync(path, content); \
-  console.log('[docker] environment.production.ts apiUrl =', url); \
+  console.log('[docker] environment.production apiUrl =', url, 'sentryDsn =', dsn ? '(set)' : '(empty)'); \
 " \
   && npm run build -- --configuration production
 

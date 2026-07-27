@@ -90,12 +90,15 @@ Configure secrets no painel do provedor ou no `.env` local (gitignored).
 | `EMAIL_FROM` / `RESEND_API_KEY` | Opcional |
 | `N8N_*` | Vazio se não usar WhatsApp |
 | `PII_ENCRYPTION_KEY` | Recomendado: `openssl rand -hex 32` — cifra sintomas/diagnóstico/prescrição (ver `docs/LGPD.md`) |
+| `SENTRY_DSN` | Opcional — erros 5xx e exceções não tratadas |
+| `SENTRY_TRACES_SAMPLE_RATE` | Opcional — padrão `0.1` em production |
 
 ### Frontend (build)
 
 | Variável | Nota |
 |----------|------|
 | `API_URL` | URL **https** da API (sem barra final). No Caddy same-host, use o mesmo `DOMAIN`. |
+| `SENTRY_DSN` | Opcional — erros no browser (build Docker / `sync:env`) |
 
 ---
 
@@ -186,3 +189,43 @@ Swagger `/api-docs` fica **desligado** em `NODE_ENV=production`.
 - [ ] Domínio custom + HTTPS
 - [ ] `N8N_WEBHOOK_SECRET` na UI do n8n (passo externo)
 - [ ] CI com `npm audit` + Dependabot (`.github/`)
+- [ ] Monitoramento: `/health`, `/metrics` e Sentry (ver abaixo)
+
+---
+
+## Observabilidade e alertas
+
+Endpoints expostos pela API (sem auth — restrinja na borda se necessário):
+
+| Endpoint | Uso |
+|----------|-----|
+| `GET /health` | Liveness/readiness; **503** quando MySQL indisponível |
+| `GET /metrics` | Snapshot JSON: contadores HTTP (`responses5xx`, etc.) + última execução dos jobs (`found`/`sent`/`failed`) |
+
+### Sentry (opcional)
+
+1. Crie projeto no [Sentry](https://sentry.io) (Node + Browser).
+2. Backend/worker: `SENTRY_DSN=https://…` no `.env`.
+3. Frontend: `SENTRY_DSN` no build (`frontend/.env` + `npm run sync:env`, ou `ARG SENTRY_DSN` no Docker).
+4. Erros **5xx** no `errorHandler` são enviados automaticamente quando o DSN está definido.
+
+Variáveis:
+
+```env
+SENTRY_DSN=
+SENTRY_TRACES_SAMPLE_RATE=0.1
+```
+
+### Alertas mínimos recomendados
+
+Configure no seu monitor (UptimeRobot, Datadog, CloudWatch, Grafana, etc.):
+
+| Alerta | Condição | Severidade |
+|--------|----------|------------|
+| API indisponível | `GET /health` ≠ 200 por **2 checks** consecutivos | Crítico |
+| Banco down | `GET /health` → **503** ou `checks.database.status != up` | Crítico |
+| Taxa de erro 5xx | `GET /metrics` → `http.responses5xx / http.requestsTotal > 0.05` (5%) em janela de 15 min | Alto |
+| Job com falhas | `GET /metrics` → job `failed > 0` após execução diária | Médio |
+| Sentry | Novo issue ou spike de eventos | Alto |
+
+Logs estruturados JSON (`LOG_LEVEL=info` em production) complementam métricas e Sentry — ingestão via stdout do container/PaaS.

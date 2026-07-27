@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { initSentry } from './shared/observability/sentry';
 import { validateEnv } from './shared/config/validateEnv';
 import app from './app';
 import sequelize from './config/database';
@@ -7,6 +8,7 @@ import appointmentRemindersJob from './modules/appointments/jobs/AppointmentRemi
 import { startConversationGC } from './modules/conversations/jobs/ConversationGarbageCollector';
 import { logger } from './shared/logging/logger';
 
+initSentry();
 validateEnv();
 
 const PORT = process.env.PORT || 3000;

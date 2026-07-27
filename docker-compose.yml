@@ -50,6 +50,8 @@ services:
       N8N_MEDICAL_RECORD_WEBHOOK_URL: ${N8N_MEDICAL_RECORD_WEBHOOK_URL:-}
       N8N_MEDICAL_RECORD_WEBHOOK_API_KEY: ${N8N_MEDICAL_RECORD_WEBHOOK_API_KEY:-}
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-}
     ports:
       - "${BACKEND_HOST_PORT:-3000}:3000"
     networks:
@@ -61,6 +63,7 @@ services:
       dockerfile: Dockerfile
       args:
         API_URL: ${API_URL:?Defina API_URL no .env}
+        SENTRY_DSN: ${SENTRY_DSN:-}
     container_name: aten-ai-frontend
     restart: unless-stopped
     depends_on:

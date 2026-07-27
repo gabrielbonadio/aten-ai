@@ -5,7 +5,9 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './shared/docs/swagger';
 import { healthHandler } from './shared/health/healthHandler';
+import { metricsHandler } from './shared/health/metricsHandler';
 import { errorHandler } from './shared/middlewares/errorHandler';
+import { httpMetricsMiddleware } from './shared/middlewares/httpMetricsMiddleware';
 import routes from './routes';
 
 class App {
@@ -48,12 +50,15 @@ class App {
     this.express.use(cookieParser());
     this.express.use(express.json({ limit: '100kb' }));
     this.express.use(express.urlencoded({ extended: true, limit: '100kb' }));
+    this.express.use(httpMetricsMiddleware);
   }
 
   private routes(): void {
     this.express.get('/health', (req, res, next) => {
       void healthHandler(req, res).catch(next);
     });
+
+    this.express.get('/metrics', metricsHandler);
 
     const nodeEnv = (process.env.NODE_ENV ?? 'development').trim().toLowerCase();
     if (nodeEnv !== 'production') {

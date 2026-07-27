@@ -1,4 +1,5 @@
 import { logger } from '../../../shared/logging/logger';
+import { metrics } from '../../../shared/observability/metrics';
 import conversationStateRepository from '../repositories/ConversationStateRepository';
 
 /**
@@ -45,13 +46,16 @@ class ConversationGarbageCollector {
       return 0;
     }
     this.isRunning = true;
+    const startedAt = Date.now();
 
     try {
       logger.info('job.conversation_gc.scan_start');
 
       const deleted = await conversationStateRepository.clearExpiredStates();
 
-      logger.info('job.conversation_gc.scan_done', { deleted });
+      const elapsedMs = Date.now() - startedAt;
+      logger.info('job.conversation_gc.scan_done', { deleted, elapsedMs });
+      metrics.recordJobCounters('conversationGC', { deleted }, elapsedMs);
       return deleted;
     } catch (err) {
       // Nunca propaga: o scheduler deve continuar mesmo com DB intermitente.

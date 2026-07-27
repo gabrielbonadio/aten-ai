@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { initSentry } from './shared/observability/sentry';
 import { validateEnv } from './shared/config/validateEnv';
 import sequelize from './config/database';
 import appointmentFollowupsJob from './modules/appointments/jobs/AppointmentFollowupsJob';
@@ -10,6 +11,7 @@ import { logger } from './shared/logging/logger';
  * Processo dedicado para jobs (lembretes, follow-ups, GC).
  * Use com ENABLE_IN_PROCESS_JOBS=false na API para scale-out horizontal sem duplicar WhatsApps.
  */
+initSentry();
 validateEnv();
 
 const startWorker = async () => {

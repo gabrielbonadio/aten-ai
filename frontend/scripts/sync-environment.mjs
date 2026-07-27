@@ -44,10 +44,12 @@ if (!existsSync(envPath)) {
 
 const env = parseDotEnv(readFileSync(envPath, 'utf8'));
 const apiUrl = env.API_URL?.trim() || 'http://localhost:3000';
+const sentryDsn = env.SENTRY_DSN?.trim() || '';
 
 const fileContent = `export const environment = {
   production: false,
-  apiUrl: '${apiUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'
+  apiUrl: '${apiUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}',
+  sentryDsn: '${sentryDsn.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'
 };
 `;
 

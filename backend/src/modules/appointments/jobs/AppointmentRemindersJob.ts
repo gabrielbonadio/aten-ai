@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
 import { logger } from '../../../shared/logging/logger';
+import { metrics } from '../../../shared/observability/metrics';
 import webhookService from '../../../shared/services/WebhookService';
 import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
 import conversationStateRepository from '../../conversations/repositories/ConversationStateRepository';
@@ -205,6 +206,12 @@ class AppointmentRemindersJob {
         found: result.found,
         sent: result.sent,
         failed: result.failed
+      });
+      metrics.recordJobRun('appointmentReminders', {
+        found: result.found,
+        sent: result.sent,
+        failed: result.failed,
+        durationMs: elapsedMs
       });
     } catch (err) {
       // Falha catastrófica (DB offline, query inválida). NUNCA propaga

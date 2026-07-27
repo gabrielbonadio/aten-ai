@@ -170,13 +170,13 @@ Login/signup/refresh setam cookies `access_token` + `refresh_token` (`httpOnly`,
 - Modify: frontend `main.ts` (Sentry browser opcional)
 - Modify: `.env.example`
 
-- [ ] **Step 1:** Integrar Sentry (ou similar) no backend; capturar 5xx no `errorHandler`.
+- [x] **Step 1:** Integrar Sentry (ou similar) no backend; capturar 5xx no `errorHandler`.
 
-- [ ] **Step 2:** Expor métricas mínimas dos jobs (found/sent/failed) via log estruturado ou `/metrics`.
+- [x] **Step 2:** Expor métricas mínimas dos jobs (found/sent/failed) via log estruturado ou `/metrics`.
 
-- [ ] **Step 3:** Alertas básicos (health 503, error rate).
+- [x] **Step 3:** Alertas básicos (health 503, error rate).
 
-- [ ] **Step 4:** Commit: `feat(ops): add error tracking and job metrics`
+- [x] **Step 4:** Commit: `feat(ops): add error tracking and job metrics`
 
 ---
 
