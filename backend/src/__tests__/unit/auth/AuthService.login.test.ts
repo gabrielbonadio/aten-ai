@@ -55,14 +55,16 @@ describe('AuthService.login (unit)', () => {
     expect(mockedUserRepository.findByEmail).toHaveBeenCalledWith(userTenantA.email);
     expect(mockedBcrypt.compare).toHaveBeenCalledWith('SenhaSegura@123', userTenantA.password_hash);
     expect(mockedTenantRepository.findById).toHaveBeenCalledWith(userTenantA.tenantId);
-    expect(result.token).toEqual(expect.any(String));
-    expect(result.refreshToken).toEqual(expect.any(String));
-    expect(result.user).toMatchObject({
-      id: userTenantA.id,
-      email: userTenantA.email,
-      tenantId: userTenantA.tenantId
+    expect(result).toMatchObject({
+      token: expect.any(String),
+      refreshToken: expect.any(String),
+      user: {
+        id: userTenantA.id,
+        email: userTenantA.email,
+        tenantId: userTenantA.tenantId
+      },
+      tenant: tenantA
     });
-    expect(result.tenant).toEqual(tenantA);
   });
 
   it('rejeita senha incorreta com UnauthorizedError', async () => {

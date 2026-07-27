@@ -38,3 +38,35 @@ export const refreshTokenSchema = Joi.object({
 export const logoutSchema = Joi.object({
   refreshToken: Joi.string().trim().min(32).optional()
 });
+
+const totpCodeSchema = Joi.string().trim().pattern(/^\d{6}$/).messages({
+  'string.pattern.base': 'O código deve ter 6 dígitos.'
+});
+
+const recoveryCodeSchema = Joi.string().trim().min(8).max(32);
+
+export const loginTotpSchema = Joi.object({
+  pendingToken: Joi.string().trim().min(32).required(),
+  code: totpCodeSchema.optional(),
+  recoveryCode: recoveryCodeSchema.optional()
+})
+  .or('code', 'recoveryCode')
+  .messages({
+    'object.missing': 'Informe o código do autenticador ou um código de recuperação.'
+  });
+
+export const totpConfirmSchema = Joi.object({
+  code: totpCodeSchema.required()
+});
+
+export const totpDisableSchema = Joi.object({
+  password: Joi.string().required(),
+  code: totpCodeSchema.optional(),
+  recoveryCode: recoveryCodeSchema.optional()
+})
+  .or('code', 'recoveryCode')
+  .messages({
+    'object.missing': 'Informe o código do autenticador ou um código de recuperação.'
+  });
+
+export const totpRegenerateSchema = totpDisableSchema;

@@ -56,6 +56,13 @@ export class SettingsComponent implements OnInit {
 
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly isAdmin = signal(false);
+  readonly totpEnabled = signal(false);
+  readonly totpBusy = signal(false);
+  readonly totpSetupQr = signal<string | null>(null);
+  readonly totpSetupSecret = signal<string | null>(null);
+  readonly recoveryCodes = signal<string[] | null>(null);
+  readonly recoveryRemaining = signal(0);
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
@@ -65,20 +72,142 @@ export class SettingsComponent implements OnInit {
     address: ['', [Validators.maxLength(500)]]
   });
 
+  readonly totpConfirmForm = this.fb.nonNullable.group({
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]]
+  });
+
+  readonly totpDisableForm = this.fb.nonNullable.group({
+    password: ['', Validators.required],
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]]
+  });
+
   ngOnInit(): void {
+    const user = this.auth.getStoredUser();
+    this.isAdmin.set(user?.role === 'ADMIN');
+
     this.settingsService.get().subscribe({
       next: (t) => {
         this.patchFormFromTenant(t);
         this.brand.applyTenant(t);
         this.loading.set(false);
+        if (this.isAdmin()) {
+          this.loadTotpStatus();
+        }
       },
       error: (err: unknown) => {
         this.loading.set(false);
         const msg =
-          err instanceof HttpErrorResponse ? this.extractApiMessage(err) : 'Não foi possível carregar as configurações.';
+          err instanceof HttpErrorResponse
+            ? this.extractApiMessage(err)
+            : 'Não foi possível carregar as configurações.';
         this.notifications.error(msg);
       }
     });
+  }
+
+  private loadTotpStatus(): void {
+    this.auth.getTotpStatus().subscribe({
+      next: (s) => {
+        this.totpEnabled.set(s.enabled);
+        this.recoveryRemaining.set(s.recoveryCodesRemaining);
+      },
+      error: () => {
+        // Silencioso — MEMBER ou endpoint indisponível
+      }
+    });
+  }
+
+  startTotpSetup(): void {
+    if (this.totpBusy()) return;
+    this.totpBusy.set(true);
+    this.uiBlock.show('Gerando QR Code…');
+    this.auth.setupTotp().subscribe({
+      next: (res) => {
+        this.totpBusy.set(false);
+        this.uiBlock.hide();
+        this.totpSetupQr.set(res.qrDataUrl);
+        this.totpSetupSecret.set(res.secret);
+        this.recoveryCodes.set(null);
+        this.totpConfirmForm.reset({ code: '' });
+      },
+      error: (err: unknown) => {
+        this.totpBusy.set(false);
+        this.uiBlock.hide();
+        this.notifications.error(
+          err instanceof HttpErrorResponse
+            ? this.extractApiMessage(err)
+            : 'Não foi possível iniciar o 2FA.'
+        );
+      }
+    });
+  }
+
+  confirmTotpSetup(): void {
+    if (this.totpConfirmForm.invalid) {
+      this.totpConfirmForm.markAllAsTouched();
+      return;
+    }
+    this.totpBusy.set(true);
+    this.uiBlock.show('Ativando 2FA…');
+    this.auth.confirmTotp(this.totpConfirmForm.controls.code.value.trim()).subscribe({
+      next: (res) => {
+        this.totpBusy.set(false);
+        this.uiBlock.hide();
+        this.totpEnabled.set(true);
+        this.totpSetupQr.set(null);
+        this.totpSetupSecret.set(null);
+        this.recoveryCodes.set(res.recoveryCodes);
+        this.recoveryRemaining.set(res.recoveryCodes.length);
+        this.notifications.success('Autenticação em dois fatores ativada.');
+      },
+      error: (err: unknown) => {
+        this.totpBusy.set(false);
+        this.uiBlock.hide();
+        this.notifications.error(
+          err instanceof HttpErrorResponse ? this.extractApiMessage(err) : 'Código inválido.'
+        );
+      }
+    });
+  }
+
+  cancelTotpSetup(): void {
+    this.totpSetupQr.set(null);
+    this.totpSetupSecret.set(null);
+    this.totpConfirmForm.reset({ code: '' });
+  }
+
+  disableTotp(): void {
+    if (this.totpDisableForm.invalid) {
+      this.totpDisableForm.markAllAsTouched();
+      return;
+    }
+    this.totpBusy.set(true);
+    this.uiBlock.show('Desativando 2FA…');
+    const { password, code } = this.totpDisableForm.getRawValue();
+    this.auth.disableTotp({ password, code }).subscribe({
+      next: () => {
+        this.totpBusy.set(false);
+        this.uiBlock.hide();
+        this.totpEnabled.set(false);
+        this.recoveryCodes.set(null);
+        this.recoveryRemaining.set(0);
+        this.totpDisableForm.reset({ password: '', code: '' });
+        this.notifications.success('2FA desativado.');
+      },
+      error: (err: unknown) => {
+        this.totpBusy.set(false);
+        this.uiBlock.hide();
+        this.notifications.error(
+          err instanceof HttpErrorResponse
+            ? this.extractApiMessage(err)
+            : 'Não foi possível desativar o 2FA.'
+        );
+      }
+    });
+  }
+
+  dismissRecoveryCodes(): void {
+    this.recoveryCodes.set(null);
   }
 
   private patchFormFromTenant(t: TenantSettings): void {

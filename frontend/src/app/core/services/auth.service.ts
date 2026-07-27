@@ -25,6 +25,34 @@ export interface AuthResponse {
   };
 }
 
+export interface TotpChallengeResponse {
+  requiresTotp: true;
+  pendingToken: string;
+}
+
+export type LoginResult = AuthResponse | TotpChallengeResponse;
+
+export function isTotpChallenge(result: LoginResult): result is TotpChallengeResponse {
+  return 'requiresTotp' in result && result.requiresTotp === true;
+}
+
+export interface TotpStatus {
+  enabled: boolean;
+  enabledAt: string | null;
+  recoveryCodesRemaining: number;
+}
+
+export interface TotpSetupResponse {
+  otpauthUrl: string;
+  qrDataUrl: string;
+  secret: string;
+}
+
+export interface TotpConfirmResponse {
+  recoveryCodes: string[];
+  enabledAt: string;
+}
+
 export interface SignUpPayload {
   tenantName: string;
   userName: string;
@@ -117,11 +145,69 @@ export class AuthService {
       .pipe(tap((response) => this.persistSession(response)));
   }
 
-  /** Realiza o login e salva os dados na sessão. */
-  login(credentials: LoginPayload): Observable<AuthResponse> {
+  /** Realiza o login. Pode retornar desafio TOTP se 2FA estiver ativo. */
+  login(credentials: LoginPayload): Observable<LoginResult> {
+    return this.http.post<LoginResult>(`${this.apiBase()}/auth/login`, credentials, this.httpOpts()).pipe(
+      tap((response) => {
+        if (!isTotpChallenge(response)) {
+          this.persistSession(response);
+        }
+      })
+    );
+  }
+
+  /** Completa login após senha quando 2FA está ativo. */
+  loginTotp(payload: {
+    pendingToken: string;
+    code?: string;
+    recoveryCode?: string;
+  }): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${this.apiBase()}/auth/login`, credentials, this.httpOpts())
+      .post<AuthResponse>(`${this.apiBase()}/auth/login/totp`, payload, this.httpOpts())
       .pipe(tap((response) => this.persistSession(response)));
+  }
+
+  getTotpStatus(): Observable<TotpStatus> {
+    return this.http.get<TotpStatus>(`${this.apiBase()}/auth/totp/status`, this.httpOpts());
+  }
+
+  setupTotp(): Observable<TotpSetupResponse> {
+    return this.http.post<TotpSetupResponse>(`${this.apiBase()}/auth/totp/setup`, {}, this.httpOpts());
+  }
+
+  confirmTotp(code: string): Observable<TotpConfirmResponse> {
+    return this.http.post<TotpConfirmResponse>(
+      `${this.apiBase()}/auth/totp/confirm`,
+      { code },
+      this.httpOpts()
+    );
+  }
+
+  disableTotp(payload: { password: string; code?: string; recoveryCode?: string }): Observable<void> {
+    return this.http.post<void>(`${this.apiBase()}/auth/totp/disable`, payload, this.httpOpts());
+  }
+
+  regenerateRecoveryCodes(payload: {
+    password: string;
+    code?: string;
+    recoveryCode?: string;
+  }): Observable<{ recoveryCodes: string[] }> {
+    return this.http.post<{ recoveryCodes: string[] }>(
+      `${this.apiBase()}/auth/totp/recovery/regenerate`,
+      payload,
+      this.httpOpts()
+    );
+  }
+
+  /** Usuário em localStorage (role para UI de settings). */
+  getStoredUser(): CurrentUser | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_USER);
+      if (!raw) return null;
+      return JSON.parse(raw) as CurrentUser;
+    } catch {
+      return null;
+    }
   }
 
   /**

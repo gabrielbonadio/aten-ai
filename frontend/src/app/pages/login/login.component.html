@@ -1,7 +1,15 @@
 <app-auth-page-shell>
   <div class="mb-6">
-    <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Entrar</h1>
-    <p class="mt-1 text-zinc-600 dark:text-zinc-400">Acesse sua conta para continuar.</p>
+    <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+      {{ step() === 'totp' ? 'Verificação em duas etapas' : 'Entrar' }}
+    </h1>
+    <p class="mt-1 text-zinc-600 dark:text-zinc-400">
+      {{
+        step() === 'totp'
+          ? 'Digite o código do seu autenticador para continuar.'
+          : 'Acesse sua conta para continuar.'
+      }}
+    </p>
   </div>
 
   <div
@@ -12,7 +20,7 @@
     {{ sessionNotice }}
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+  <form *ngIf="step() === 'credentials'" [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
     <div>
       <label [class]="labelClass" for="login-email">E-mail</label>
       <input
@@ -86,7 +94,71 @@
     </button>
   </form>
 
-  <p class="mt-5 text-center text-sm text-zinc-600 dark:text-zinc-400">
+  <form *ngIf="step() === 'totp'" [formGroup]="totpForm" (ngSubmit)="submitTotp()" class="space-y-4">
+    <div *ngIf="!useRecovery()">
+      <label [class]="labelClass" for="login-totp">Código do autenticador</label>
+      <input
+        id="login-totp"
+        type="text"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        formControlName="code"
+        maxlength="6"
+        placeholder="000000"
+        [class]="inputClass + ' tracking-[0.3em]'"
+      />
+      <p
+        *ngIf="totpForm.controls.code.touched && totpForm.controls.code.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        Informe o código de 6 dígitos.
+      </p>
+    </div>
+
+    <div *ngIf="useRecovery()">
+      <label [class]="labelClass" for="login-recovery">Código de recuperação</label>
+      <input
+        id="login-recovery"
+        type="text"
+        formControlName="recoveryCode"
+        autocomplete="off"
+        placeholder="XXXX-XXXX"
+        [class]="inputClass"
+      />
+    </div>
+
+    <div
+      *ngIf="errorMessage"
+      class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-200"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </div>
+
+    <button type="submit" [disabled]="loading" [class]="primaryBtnClass">
+      <span *ngIf="!loading">Verificar</span>
+      <span *ngIf="loading">Verificando…</span>
+    </button>
+
+    <div class="flex flex-col gap-2 text-center text-sm">
+      <button
+        type="button"
+        class="font-medium text-emerald-700 underline underline-offset-2 hover:no-underline dark:text-emerald-400"
+        (click)="toggleRecoveryMode()"
+      >
+        {{ useRecovery() ? 'Usar código do autenticador' : 'Usar código de recuperação' }}
+      </button>
+      <button
+        type="button"
+        class="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+        (click)="backToCredentials()"
+      >
+        Voltar
+      </button>
+    </div>
+  </form>
+
+  <p *ngIf="step() === 'credentials'" class="mt-5 text-center text-sm text-zinc-600 dark:text-zinc-400">
     Ainda não tem conta?
     <a
       routerLink="/signup"

@@ -187,13 +187,13 @@ Login/signup/refresh setam cookies `access_token` + `refresh_token` (`httpOnly`,
 - Modify: auth login flow (segundo fator)
 - Modify: frontend settings + login UI
 
-- [ ] **Step 1:** Biblioteca `otplib` + QR no setup.
+- [x] **Step 1:** Biblioteca `otplib` + QR no setup.
 
-- [ ] **Step 2:** Login: senha OK → exigir código se 2FA ativo.
+- [x] **Step 2:** Login: senha OK → exigir código se 2FA ativo.
 
-- [ ] **Step 3:** Recovery codes hashados.
+- [x] **Step 3:** Recovery codes hashados.
 
-- [ ] **Step 4:** Testes + commit: `feat(auth): TOTP 2FA for ADMIN`
+- [x] **Step 4:** Testes + commit: `feat(auth): TOTP 2FA for ADMIN`
 
 ---
 

@@ -1,12 +1,16 @@
 import { NextFunction, Request, Response } from 'express';
 import { AppError } from '../../../shared/errors/AppError';
-import authService from '../services/AuthService';
+import authService, { type AuthResponse, type LoginResult } from '../services/AuthService';
 import userRepository from '../repositories/UserRepository';
 import {
   clearAuthCookies,
   REFRESH_COOKIE,
   setAuthCookies
 } from '../utils/authCookies';
+
+function isAuthSession(result: LoginResult): result is AuthResponse {
+  return !('requiresTotp' in result && result.requiresTotp);
+}
 
 function resolveRefreshToken(req: Request): string | null {
   const fromBody = (req.body as { refreshToken?: unknown })?.refreshToken;
@@ -20,6 +24,14 @@ function resolveRefreshToken(req: Request): string | null {
   return null;
 }
 
+function requireUserId(req: Request): string {
+  const id = req.user?.id;
+  if (!id) {
+    throw new AppError('Usuário não autenticado.', 401);
+  }
+  return id;
+}
+
 class AuthController {
   async signUp(req: Request, res: Response): Promise<void> {
     const result = await authService.signUp(req.body);
@@ -29,6 +41,16 @@ class AuthController {
 
   async login(req: Request, res: Response): Promise<void> {
     const result = await authService.login(req.body);
+    if (!isAuthSession(result)) {
+      res.status(200).json(result);
+      return;
+    }
+    setAuthCookies(res, result.token, result.refreshToken);
+    res.status(200).json(result);
+  }
+
+  async loginTotp(req: Request, res: Response): Promise<void> {
+    const result = await authService.completeTotpLogin(req.body);
     setAuthCookies(res, result.token, result.refreshToken);
     res.status(200).json(result);
   }
@@ -87,6 +109,32 @@ class AuthController {
     } catch (err) {
       next(err);
     }
+  }
+
+  async totpStatus(req: Request, res: Response): Promise<void> {
+    const status = await authService.getTotpStatus(requireUserId(req));
+    res.status(200).json(status);
+  }
+
+  async totpSetup(req: Request, res: Response): Promise<void> {
+    const result = await authService.setupTotp(requireUserId(req));
+    res.status(200).json(result);
+  }
+
+  async totpConfirm(req: Request, res: Response): Promise<void> {
+    const { code } = req.body as { code: string };
+    const result = await authService.confirmTotp(requireUserId(req), code);
+    res.status(200).json(result);
+  }
+
+  async totpDisable(req: Request, res: Response): Promise<void> {
+    await authService.disableTotp(requireUserId(req), req.body);
+    res.status(204).send();
+  }
+
+  async totpRegenerateRecovery(req: Request, res: Response): Promise<void> {
+    const result = await authService.regenerateRecoveryCodes(requireUserId(req), req.body);
+    res.status(200).json(result);
   }
 }
 

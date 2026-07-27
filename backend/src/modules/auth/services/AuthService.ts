@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import sequelize from '../../../config/database';
-import { AppError, ConflictError, UnauthorizedError } from '../../../shared/errors/AppError';
+import { AppError, ConflictError, ForbiddenError, UnauthorizedError } from '../../../shared/errors/AppError';
 import { logger } from '../../../shared/logging/logger';
 import type { IMailProvider } from '../../../shared/providers/MailProvider/IMailProvider';
 import { ResendMailProvider } from '../../../shared/providers/MailProvider/ResendMailProvider';
@@ -10,12 +10,26 @@ import tenantRepository from '../../tenants/repositories/TenantRepository';
 import userRepository from '../repositories/UserRepository';
 import userTokenRepository from '../repositories/UserTokenRepository';
 import type User from '../models/User';
+import {
+  buildOtpAuthUrl,
+  buildQrDataUrl,
+  consumeRecoveryCode,
+  decryptTotpSecret,
+  encryptTotpSecret,
+  generateRecoveryCodes,
+  generateTotpSecret,
+  parseRecoveryHashes,
+  serializeRecoveryHashes,
+  verifyTotpCode
+} from './totpCrypto';
 
 const BCRYPT_SALT_ROUNDS = 12;
 const RESET_TOKEN_BYTES = 32;
 const REFRESH_TOKEN_BYTES = 48;
+const PENDING_2FA_TOKEN_BYTES = 32;
 const RESET_TOKEN_TTL_MS = 2 * 60 * 60 * 1000; // 2 horas
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+const PENDING_2FA_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 /** Hash fixo só para equalizar timing quando o e-mail não existe (bcrypt de string dummy). */
 const DUMMY_PASSWORD_HASH =
@@ -85,6 +99,30 @@ export type AuthResponse = {
   refreshToken: string;
   user: AuthUserView;
   tenant: TenantView;
+};
+
+export type TotpChallengeResponse = {
+  requiresTotp: true;
+  pendingToken: string;
+};
+
+export type LoginResult = AuthResponse | TotpChallengeResponse;
+
+export type TotpSetupResponse = {
+  otpauthUrl: string;
+  qrDataUrl: string;
+  secret: string;
+};
+
+export type TotpConfirmResponse = {
+  recoveryCodes: string[];
+  enabledAt: string;
+};
+
+export type TotpStatusResponse = {
+  enabled: boolean;
+  enabledAt: string | null;
+  recoveryCodesRemaining: number;
 };
 
 function toUserView(user: User): AuthUserView {
@@ -255,10 +293,12 @@ class AuthService {
 
       await userTokenRepository.deleteById(tokenRow.id, { transaction });
       await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'refresh', { transaction });
+      await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'totp_pending', { transaction });
+      // Troca de senha invalida 2FA pendente/ativo? Mantemos TOTP, mas limpar pending.
     });
   }
 
-  async login(input: LoginInput): Promise<AuthResponse> {
+  async login(input: LoginInput): Promise<LoginResult> {
     const email = input.email.trim().toLowerCase();
     const user = await userRepository.findByEmail(email);
 
@@ -270,7 +310,212 @@ class AuthService {
       throw new UnauthorizedError('Credenciais inválidas.');
     }
 
+    if (user.role === 'ADMIN' && user.totpEnabledAt && user.totpSecret) {
+      const pendingRaw = crypto.randomBytes(PENDING_2FA_TOKEN_BYTES).toString('hex');
+      const pendingHash = hashOpaqueToken(pendingRaw);
+      const expiresAt = new Date(Date.now() + PENDING_2FA_TTL_MS);
+
+      await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'totp_pending');
+      await userTokenRepository.create({
+        token: pendingHash,
+        userId: user.id,
+        purpose: 'totp_pending',
+        expiresAt
+      });
+
+      return { requiresTotp: true, pendingToken: pendingRaw };
+    }
+
     return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Segundo fator do login: código TOTP (6 dígitos) ou recovery code.
+   */
+  async completeTotpLogin(input: {
+    pendingToken: string;
+    code?: string;
+    recoveryCode?: string;
+  }): Promise<AuthResponse> {
+    const pendingHash = hashOpaqueToken(input.pendingToken.trim());
+    const tokenRow = await userTokenRepository.findByToken(pendingHash, 'totp_pending');
+
+    if (!tokenRow || tokenRow.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedError('Sessão de verificação expirada. Faça login novamente.');
+    }
+
+    const user = await userRepository.findById(tokenRow.userId);
+    if (!user || user.role !== 'ADMIN' || !user.totpEnabledAt || !user.totpSecret) {
+      throw new UnauthorizedError('Sessão de verificação inválida.');
+    }
+
+    const totpCode = input.code?.trim();
+    const recoveryCode = input.recoveryCode?.trim();
+
+    if (totpCode) {
+      const secret = decryptTotpSecret(user.totpSecret);
+      if (!verifyTotpCode(secret, totpCode)) {
+        throw new UnauthorizedError('Código de autenticação inválido.');
+      }
+    } else if (recoveryCode) {
+      const hashes = parseRecoveryHashes(user.totpRecoveryHashes);
+      const remaining = consumeRecoveryCode(hashes, recoveryCode);
+      if (!remaining) {
+        throw new UnauthorizedError('Código de recuperação inválido.');
+      }
+      await userRepository.updateTotp(user.id, {
+        totpRecoveryHashes: serializeRecoveryHashes(remaining)
+      });
+    } else {
+      throw new AppError('Informe o código do autenticador ou um código de recuperação.', 400);
+    }
+
+    await userTokenRepository.deleteById(tokenRow.id);
+    await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'totp_pending');
+
+    return this.buildAuthResponse(user);
+  }
+
+  getTotpStatus(userId: string): Promise<TotpStatusResponse> {
+    return this.loadAdminForTotp(userId).then((user) => ({
+      enabled: Boolean(user.totpEnabledAt && user.totpSecret),
+      enabledAt: user.totpEnabledAt ? user.totpEnabledAt.toISOString() : null,
+      recoveryCodesRemaining: parseRecoveryHashes(user.totpRecoveryHashes).length
+    }));
+  }
+
+  async setupTotp(userId: string): Promise<TotpSetupResponse> {
+    const user = await this.loadAdminForTotp(userId);
+
+    if (user.totpEnabledAt) {
+      throw new ConflictError('A autenticação em dois fatores já está ativa.');
+    }
+
+    const secret = generateTotpSecret();
+    const encrypted = encryptTotpSecret(secret);
+    await userRepository.updateTotp(user.id, {
+      totpSecret: encrypted,
+      totpEnabledAt: null,
+      totpRecoveryHashes: null
+    });
+
+    const otpauthUrl = buildOtpAuthUrl(user.email, secret);
+    const qrDataUrl = await buildQrDataUrl(otpauthUrl);
+
+    return { otpauthUrl, qrDataUrl, secret };
+  }
+
+  async confirmTotp(userId: string, code: string): Promise<TotpConfirmResponse> {
+    const user = await this.loadAdminForTotp(userId);
+
+    if (user.totpEnabledAt) {
+      throw new ConflictError('A autenticação em dois fatores já está ativa.');
+    }
+    if (!user.totpSecret) {
+      throw new AppError('Inicie o setup do 2FA antes de confirmar.', 400);
+    }
+
+    const secret = decryptTotpSecret(user.totpSecret);
+    if (!verifyTotpCode(secret, code)) {
+      throw new UnauthorizedError('Código de autenticação inválido.');
+    }
+
+    const { codes, hashes } = generateRecoveryCodes();
+    const enabledAt = new Date();
+    await userRepository.updateTotp(user.id, {
+      totpEnabledAt: enabledAt,
+      totpRecoveryHashes: serializeRecoveryHashes(hashes)
+    });
+
+    return { recoveryCodes: codes, enabledAt: enabledAt.toISOString() };
+  }
+
+  async disableTotp(
+    userId: string,
+    input: { password: string; code?: string; recoveryCode?: string }
+  ): Promise<void> {
+    const user = await this.loadAdminForTotp(userId);
+
+    if (!user.totpEnabledAt || !user.totpSecret) {
+      throw new AppError('A autenticação em dois fatores não está ativa.', 400);
+    }
+
+    const passwordOk = await bcrypt.compare(input.password, user.password_hash);
+    if (!passwordOk) {
+      throw new UnauthorizedError('Senha incorreta.');
+    }
+
+    await this.assertTotpOrRecovery(user, input.code, input.recoveryCode);
+    await userRepository.clearTotp(user.id);
+    await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'totp_pending');
+  }
+
+  async regenerateRecoveryCodes(
+    userId: string,
+    input: { password: string; code?: string; recoveryCode?: string }
+  ): Promise<{ recoveryCodes: string[] }> {
+    const user = await this.loadAdminForTotp(userId);
+
+    if (!user.totpEnabledAt || !user.totpSecret) {
+      throw new AppError('A autenticação em dois fatores não está ativa.', 400);
+    }
+
+    const passwordOk = await bcrypt.compare(input.password, user.password_hash);
+    if (!passwordOk) {
+      throw new UnauthorizedError('Senha incorreta.');
+    }
+
+    await this.assertTotpOrRecovery(user, input.code, input.recoveryCode);
+
+    const { codes, hashes } = generateRecoveryCodes();
+    await userRepository.updateTotp(user.id, {
+      totpRecoveryHashes: serializeRecoveryHashes(hashes)
+    });
+
+    return { recoveryCodes: codes };
+  }
+
+  private async loadAdminForTotp(userId: string): Promise<User> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedError('Usuário não autenticado.');
+    }
+    if (user.role !== 'ADMIN') {
+      throw new ForbiddenError('2FA disponível apenas para administradores.');
+    }
+    return user;
+  }
+
+  private async assertTotpOrRecovery(
+    user: User,
+    code?: string,
+    recoveryCode?: string
+  ): Promise<void> {
+    if (!user.totpSecret) {
+      throw new AppError('2FA inválido.', 400);
+    }
+
+    if (code?.trim()) {
+      const secret = decryptTotpSecret(user.totpSecret);
+      if (!verifyTotpCode(secret, code)) {
+        throw new UnauthorizedError('Código de autenticação inválido.');
+      }
+      return;
+    }
+
+    if (recoveryCode?.trim()) {
+      const hashes = parseRecoveryHashes(user.totpRecoveryHashes);
+      const remaining = consumeRecoveryCode(hashes, recoveryCode);
+      if (!remaining) {
+        throw new UnauthorizedError('Código de recuperação inválido.');
+      }
+      await userRepository.updateTotp(user.id, {
+        totpRecoveryHashes: serializeRecoveryHashes(remaining)
+      });
+      return;
+    }
+
+    throw new AppError('Informe o código do autenticador ou um código de recuperação.', 400);
   }
 
   /**

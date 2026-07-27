@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, isTotpChallenge } from '../../core/services/auth.service';
 import { mapAuthHttpError } from '../../core/utils/auth-error.util';
 import { consumeAuthNotice } from '../../core/utils/auth-notice.util';
 import { NotificationService } from '../../shared/notifications/notification.service';
@@ -42,10 +42,18 @@ export class LoginComponent implements OnInit {
   errorMessage: string | null = null;
   sessionNotice: string | null = null;
   readonly showPassword = signal(false);
+  readonly step = signal<'credentials' | 'totp'>('credentials');
+  readonly useRecovery = signal(false);
+  private pendingToken: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]]
+  });
+
+  readonly totpForm = this.fb.nonNullable.group({
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+    recoveryCode: ['']
   });
 
   ngOnInit(): void {
@@ -57,6 +65,20 @@ export class LoginComponent implements OnInit {
 
   togglePassword(): void {
     this.showPassword.update((v) => !v);
+  }
+
+  backToCredentials(): void {
+    this.step.set('credentials');
+    this.pendingToken = null;
+    this.useRecovery.set(false);
+    this.errorMessage = null;
+    this.totpForm.reset({ code: '', recoveryCode: '' });
+  }
+
+  toggleRecoveryMode(): void {
+    this.useRecovery.update((v) => !v);
+    this.errorMessage = null;
+    this.totpForm.patchValue({ code: '', recoveryCode: '' });
   }
 
   submit(): void {
@@ -73,6 +95,56 @@ export class LoginComponent implements OnInit {
     const { email, password } = this.form.getRawValue();
 
     this.authService.login({ email, password }).subscribe({
+      next: (result) => {
+        if (isTotpChallenge(result)) {
+          this.loading = false;
+          this.uiBlock.hide();
+          this.pendingToken = result.pendingToken;
+          this.step.set('totp');
+          return;
+        }
+
+        this.uiBlock.update('Preparando o painel…');
+        void this.router.navigateByUrl('/dashboard').finally(() => {
+          this.loading = false;
+          this.uiBlock.hide();
+        });
+      },
+      error: (err: unknown) => {
+        this.loading = false;
+        this.uiBlock.hide();
+        this.errorMessage = mapAuthHttpError(err, 'login');
+      }
+    });
+  }
+
+  submitTotp(): void {
+    this.errorMessage = null;
+    if (!this.pendingToken) {
+      this.backToCredentials();
+      return;
+    }
+
+    const usingRecovery = this.useRecovery();
+    if (usingRecovery) {
+      const recoveryCode = this.totpForm.controls.recoveryCode.value.trim();
+      if (!recoveryCode) {
+        this.totpForm.controls.recoveryCode.markAsTouched();
+        return;
+      }
+    } else if (this.totpForm.controls.code.invalid) {
+      this.totpForm.controls.code.markAsTouched();
+      return;
+    }
+
+    this.loading = true;
+    this.uiBlock.show('Verificando código…');
+
+    const payload = usingRecovery
+      ? { pendingToken: this.pendingToken, recoveryCode: this.totpForm.controls.recoveryCode.value.trim() }
+      : { pendingToken: this.pendingToken, code: this.totpForm.controls.code.value.trim() };
+
+    this.authService.loginTotp(payload).subscribe({
       next: () => {
         this.uiBlock.update('Preparando o painel…');
         void this.router.navigateByUrl('/dashboard').finally(() => {

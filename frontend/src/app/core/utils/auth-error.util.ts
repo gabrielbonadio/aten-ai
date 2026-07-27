@@ -12,7 +12,7 @@ export function mapAuthHttpError(
 
   if (context === 'login') {
     if (status === 401) {
-      return 'E-mail ou senha incorretos. Verifique e tente novamente.';
+      return apiMessage || 'E-mail ou senha incorretos. Verifique e tente novamente.';
     }
     if (status === 429) {
       return 'Muitas tentativas. Aguarde um momento e tente de novo.';

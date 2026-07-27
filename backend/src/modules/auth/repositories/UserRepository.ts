@@ -10,6 +10,12 @@ export type CreateUserData = {
   tenantId: number;
 };
 
+export type UpdateTotpData = {
+  totpSecret?: string | null;
+  totpEnabledAt?: Date | null;
+  totpRecoveryHashes?: string | null;
+};
+
 class UserRepository {
   async findByEmail(email: string, options?: { transaction?: Transaction }): Promise<User | null> {
     return User.findOne({
@@ -33,6 +39,21 @@ class UserRepository {
         where: { id },
         transaction: options?.transaction
       }
+    );
+  }
+
+  async updateTotp(id: string, data: UpdateTotpData, options?: { transaction?: Transaction }): Promise<void> {
+    await User.update(data, {
+      where: { id },
+      transaction: options?.transaction
+    });
+  }
+
+  async clearTotp(id: string, options?: { transaction?: Transaction }): Promise<void> {
+    await this.updateTotp(
+      id,
+      { totpSecret: null, totpEnabledAt: null, totpRecoveryHashes: null },
+      options
     );
   }
 }

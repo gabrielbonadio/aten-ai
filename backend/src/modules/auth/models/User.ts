@@ -9,6 +9,9 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare password_hash: string;
   declare role: CreationOptional<UserRole>;
   declare tenantId: number;
+  declare totpSecret: CreationOptional<string | null>;
+  declare totpEnabledAt: CreationOptional<Date | null>;
+  declare totpRecoveryHashes: CreationOptional<string | null>;
 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -44,6 +47,21 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
         tenantId: {
           type: DataTypes.INTEGER,
           allowNull: false
+        },
+        totpSecret: {
+          type: DataTypes.STRING(512),
+          allowNull: true,
+          defaultValue: null
+        },
+        totpEnabledAt: {
+          type: DataTypes.DATE,
+          allowNull: true,
+          defaultValue: null
+        },
+        totpRecoveryHashes: {
+          type: DataTypes.TEXT,
+          allowNull: true,
+          defaultValue: null
         },
         createdAt: DataTypes.DATE,
         updatedAt: DataTypes.DATE,
