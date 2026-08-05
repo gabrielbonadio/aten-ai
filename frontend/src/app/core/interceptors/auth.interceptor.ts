@@ -10,6 +10,7 @@ import {
   throwError
 } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { NotificationService } from '../../shared/notifications/notification.service';
 import { AuthService } from '../services/auth.service';
 import { ClinicBrandingService } from '../services/clinic-branding.service';
 
@@ -28,6 +29,7 @@ function isAuthPublicUrl(url: string, apiBase: string): boolean {
     url.startsWith(`${apiBase}/auth/signup`) ||
     url.startsWith(`${apiBase}/auth/forgot-password`) ||
     url.startsWith(`${apiBase}/auth/reset-password`) ||
+    url.startsWith(`${apiBase}/auth/accept-invite`) ||
     url.startsWith(`${apiBase}/auth/refresh`) ||
     url.startsWith(`${apiBase}/auth/logout`)
   );
@@ -46,10 +48,12 @@ function forceSessionExpired(
 /**
  * Envia cookies (`withCredentials`) e Bearer opcional (memória).
  * Em 401, tenta `/auth/refresh` via cookie httpOnly antes de forçar logout.
+ * Em 403, toast curto "Sem permissão".
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const branding = inject(ClinicBrandingService);
+  const notifications = inject(NotificationService);
   const router = inject(Router);
   const token = auth.getToken();
 
@@ -71,6 +75,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(reqToSend).pipe(
     catchError((err: unknown) => {
+      if (isApi && !isAuthPublic && err instanceof HttpErrorResponse && err.status === 403) {
+        notifications.error('Sem permissão');
+        return throwError(() => err);
+      }
+
       if (!(isApi && !isAuthPublic && err instanceof HttpErrorResponse && err.status === 401)) {
         return throwError(() => err);
       }

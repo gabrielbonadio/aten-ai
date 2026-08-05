@@ -1,10 +1,13 @@
 import { NgClass } from '@angular/common';
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShellMenuButtonComponent } from '../../components/ui/shell-menu-button/shell-menu-button.component';
+import type { AppointmentStatusCode } from '../../core/models/appointment.model';
 import type { DashboardMetricsResponse } from '../../core/services/dashboard.service';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
 import { DashboardService } from '../../core/services/dashboard.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
 import { AppointmentCreateModalComponent } from '../../features/appointments/appointment-create-modal.component';
@@ -20,6 +23,7 @@ type DashboardCardView = {
   standalone: true,
   imports: [
     NgClass,
+    RouterLink,
     LucideAngularModule,
     ShellMenuButtonComponent,
     ThemeToggleComponent,
@@ -30,8 +34,10 @@ type DashboardCardView = {
 })
 export class DashboardComponent implements OnInit {
   private readonly dashboardService = inject(DashboardService);
+  private readonly auth = inject(AuthService);
   readonly brand = inject(ClinicBrandingService);
 
+  readonly isAdmin = this.auth.isAdmin();
   readonly metricsLoading = signal(true);
   readonly loadError = signal(false);
   readonly dashboardData = signal<DashboardMetricsResponse | null>(null);
@@ -71,6 +77,31 @@ export class DashboardComponent implements OnInit {
     return t || '—';
   }
 
+  appointmentStatusLabel(a: any): string {
+    const code = this.normalizeStatus(a?.status);
+    if (code === 'COMPLETED') return 'Concluído';
+    if (code === 'CANCELED') return 'Cancelado';
+    return 'Agendado';
+  }
+
+  appointmentStatusPillClass(a: any): string {
+    const code = this.normalizeStatus(a?.status);
+    if (code === 'COMPLETED')
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300';
+    if (code === 'CANCELED')
+      return 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300';
+    return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200';
+  }
+
+  private normalizeStatus(apiStatus: unknown): AppointmentStatusCode {
+    const s = String(apiStatus ?? '')
+      .trim()
+      .toUpperCase();
+    if (s === 'COMPLETED' || s === 'CONCLUIDO' || s === 'CONCLUÍDO') return 'COMPLETED';
+    if (s === 'CANCELED' || s === 'CANCELADO' || s === 'CANCELLED') return 'CANCELED';
+    return 'SCHEDULED';
+  }
+
   typePillClass(a: any): string {
     const t = String(a?.type ?? '').trim().toUpperCase();
     if (t === 'VACCINE') return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300';
@@ -102,10 +133,15 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (!this.isAdmin) {
+      this.metricsLoading.set(false);
+      return;
+    }
     this.loadMetrics();
   }
 
   loadMetrics(): void {
+    if (!this.isAdmin) return;
     this.metricsLoading.set(true);
     this.loadError.set(false);
     this.dashboardService.getMetrics().subscribe({
@@ -113,9 +149,11 @@ export class DashboardComponent implements OnInit {
         this.dashboardData.set(m);
         this.metricsLoading.set(false);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.metricsLoading.set(false);
         this.loadError.set(true);
+        // 403: toast global no interceptor
+        void err;
       }
     });
   }

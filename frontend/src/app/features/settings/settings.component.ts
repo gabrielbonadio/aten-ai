@@ -19,6 +19,7 @@ import { NotificationService } from '../../shared/notifications/notification.ser
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { UiBlockService } from '../../shared/ui/ui-block.service';
 import { digitsOnly, formatCpfCnpj, formatPhoneBR } from '../../shared/utils/br-masks';
+import { TeamSectionComponent } from './team-section.component';
 
 function phoneBrValidator(control: AbstractControl): ValidationErrors | null {
   const n = digitsOnly(String(control.value ?? ''));
@@ -41,7 +42,8 @@ function optionalEmailValidator(control: AbstractControl): ValidationErrors | nu
     ReactiveFormsModule,
     LucideAngularModule,
     ShellMenuButtonComponent,
-    ThemeToggleComponent
+    ThemeToggleComponent,
+    TeamSectionComponent
   ],
   templateUrl: './settings.component.html'
 })
@@ -82,8 +84,7 @@ export class SettingsComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const user = this.auth.getStoredUser();
-    this.isAdmin.set(user?.role === 'ADMIN');
+    this.isAdmin.set(this.auth.isAdmin());
 
     this.settingsService.get().subscribe({
       next: (t) => {
@@ -92,6 +93,8 @@ export class SettingsComponent implements OnInit {
         this.loading.set(false);
         if (this.isAdmin()) {
           this.loadTotpStatus();
+        } else {
+          this.form.disable({ emitEvent: false });
         }
       },
       error: (err: unknown) => {
@@ -235,6 +238,10 @@ export class SettingsComponent implements OnInit {
   }
 
   submit(): void {
+    if (!this.isAdmin()) {
+      this.notifications.error('Sem permissão');
+      return;
+    }
     if (this.saving()) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) {
@@ -265,6 +272,7 @@ export class SettingsComponent implements OnInit {
       error: (err: unknown) => {
         this.saving.set(false);
         this.uiBlock.hide();
+        if (err instanceof HttpErrorResponse && err.status === 403) return;
         const msg =
           err instanceof HttpErrorResponse ? this.extractApiMessage(err) : 'Não foi possível salvar.';
         this.notifications.error(msg);

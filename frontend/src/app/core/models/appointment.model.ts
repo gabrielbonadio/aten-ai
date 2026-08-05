@@ -1,7 +1,18 @@
 import type { Pet, PetTutorSummary } from './pet.model';
 
 export type AppointmentType = 'CONSULTATION' | 'VACCINE' | 'SURGERY' | 'OTHER';
-export type AppointmentStatus = 'Confirmado' | 'Pendente' | 'Cancelado';
+
+/** Status operacional do atendimento (API, inglês). Labels PT só na UI. */
+export type AppointmentStatusCode = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
+
+/** Confirmação via WhatsApp (somente leitura no portal nesta fatia). */
+export type AppointmentConfirmationStatus = 'PENDING' | 'CONFIRMED' | 'RESCHEDULED';
+
+/** Profissional atribuído (join leve do GET /appointments). */
+export interface AppointmentAssignee {
+  id: string;
+  name: string;
+}
 
 export interface Appointment {
   id: string;
@@ -9,16 +20,18 @@ export interface Appointment {
   /** ISO string */
   scheduledAt: string;
   type: AppointmentType | string;
-  status?: AppointmentStatus | string | null;
+  status?: AppointmentStatusCode | string | null;
+  /** Resposta do tutor no WhatsApp; não editável no portal (S1). */
+  confirmationStatus?: AppointmentConfirmationStatus | null;
+  /** Profissional responsável (S4). */
+  assignedUserId?: string | null;
+  assignedUser?: AppointmentAssignee | null;
 
   /** Quando a API retornar joins */
   pet?: (Pick<Pet, 'id' | 'name'> & { tutor?: Pick<PetTutorSummary, 'id' | 'name'> | null }) | null;
   /** Compat legado (preferir `pet.tutor`) */
   tutor?: Pick<PetTutorSummary, 'id' | 'name'> | null;
 }
-
-/** Status persistido na API (inglês). */
-export type AppointmentStatusCode = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
 
 /** Corpo do POST /appointments — tenant vem do token no back-end */
 export interface CreateAppointmentPayload {
@@ -28,5 +41,14 @@ export interface CreateAppointmentPayload {
   type: AppointmentType;
   /** Opcional; padrão na API é SCHEDULED. */
   status?: AppointmentStatusCode;
+  /** Profissional; omitir/null = sem atribuição. */
+  assignedUserId?: string | null;
 }
 
+/** Corpo do PATCH /appointments/:id/status */
+export interface UpdateAppointmentStatusPayload {
+  status: AppointmentStatusCode;
+}
+
+/** Filtro de lista (query). `me` = utilizador autenticado no BE. */
+export type AppointmentAssigneeFilter = 'me' | string;

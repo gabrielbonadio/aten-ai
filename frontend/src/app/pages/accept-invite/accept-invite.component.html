@@ -1,0 +1,125 @@
+<app-auth-page-shell>
+  <div class="mb-6">
+    <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+      Aceitar convite
+    </h1>
+    <p class="mt-1 text-zinc-600 dark:text-zinc-400">
+      Defina seu nome e uma senha forte para entrar na clínica.
+    </p>
+  </div>
+
+  <form *ngIf="!tokenMissing" [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+    <div>
+      <label [class]="labelClass" for="invite-name">Seu nome</label>
+      <input
+        id="invite-name"
+        type="text"
+        formControlName="name"
+        autocomplete="name"
+        placeholder="Como prefere ser chamado"
+        [class]="inputClass"
+      />
+      <p
+        *ngIf="form.controls.name.touched && form.controls.name.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        Informe seu nome (mín. 2 caracteres).
+      </p>
+    </div>
+
+    <div>
+      <label [class]="labelClass" for="invite-password">Senha</label>
+      <div class="relative">
+        <input
+          id="invite-password"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="new-password"
+          placeholder="Ex.: SenhaSegura@123"
+          [class]="inputClass + ' pr-11'"
+        />
+        <button
+          type="button"
+          class="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          (click)="togglePassword()"
+          [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+        >
+          <lucide-icon
+            [name]="showPassword() ? 'eye-off' : 'eye'"
+            class="h-4 w-4"
+            aria-hidden="true"
+          ></lucide-icon>
+        </button>
+      </div>
+      <p
+        *ngIf="form.controls.password.touched && form.controls.password.invalid"
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        {{ passwordHint }}
+      </p>
+    </div>
+
+    <div>
+      <label [class]="labelClass" for="invite-confirm">Confirmar senha</label>
+      <input
+        id="invite-confirm"
+        [type]="showPassword() ? 'text' : 'password'"
+        formControlName="confirmPassword"
+        autocomplete="new-password"
+        placeholder="Repita a senha"
+        [class]="inputClass"
+      />
+      <p
+        *ngIf="
+          (form.controls.confirmPassword.touched || form.touched) &&
+          form.hasError('passwordsMismatch')
+        "
+        class="mt-1 text-sm text-red-600 dark:text-red-400"
+      >
+        As senhas não coincidem.
+      </p>
+    </div>
+
+    <div
+      *ngIf="successMessage"
+      class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100"
+      role="status"
+    >
+      {{ successMessage }}
+    </div>
+
+    <div
+      *ngIf="errorMessage"
+      class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-200"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </div>
+
+    <button type="submit" [disabled]="loading || !!successMessage" [class]="primaryBtnClass">
+      <span *ngIf="!loading">Ativar conta</span>
+      <span *ngIf="loading">Ativando…</span>
+    </button>
+  </form>
+
+  <div *ngIf="tokenMissing" class="space-y-4">
+    <div
+      class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-200"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </div>
+    <a routerLink="/login" [class]="primaryBtnClass + ' inline-flex justify-center'">
+      Ir para o login
+    </a>
+  </div>
+
+  <p class="mt-5 text-center text-sm text-zinc-600 dark:text-zinc-400">
+    <a
+      routerLink="/login"
+      class="font-medium text-emerald-700 underline underline-offset-2 hover:no-underline dark:text-emerald-400"
+    >
+      Já tem conta? Entrar
+    </a>
+  </p>
+</app-auth-page-shell>

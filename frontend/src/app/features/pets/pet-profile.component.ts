@@ -11,6 +11,7 @@ import { NotificationService } from '../../shared/notifications/notification.ser
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { PetConsultModalComponent } from './pet-consult-modal.component';
 import { PetMedicalDetailModalComponent } from './pet-medical-detail-modal.component';
+import { PetVaccinationsSectionComponent } from './pet-vaccinations-section.component';
 
 type PetProfileView = Pet & { medicalRecords?: MedicalRecord[] };
 
@@ -23,7 +24,8 @@ type PetProfileView = Pet & { medicalRecords?: MedicalRecord[] };
     ShellMenuButtonComponent,
     ThemeToggleComponent,
     PetConsultModalComponent,
-    PetMedicalDetailModalComponent
+    PetMedicalDetailModalComponent,
+    PetVaccinationsSectionComponent
   ],
   templateUrl: './pet-profile.component.html'
 })

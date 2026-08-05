@@ -105,7 +105,7 @@ export class LoginComponent implements OnInit {
         }
 
         this.uiBlock.update('Preparando o painel…');
-        void this.router.navigateByUrl('/dashboard').finally(() => {
+        void this.router.navigateByUrl(this.authService.isAdmin() ? '/dashboard' : '/agenda').finally(() => {
           this.loading = false;
           this.uiBlock.hide();
         });
@@ -147,7 +147,7 @@ export class LoginComponent implements OnInit {
     this.authService.loginTotp(payload).subscribe({
       next: () => {
         this.uiBlock.update('Preparando o painel…');
-        void this.router.navigateByUrl('/dashboard').finally(() => {
+        void this.router.navigateByUrl(this.authService.isAdmin() ? '/dashboard' : '/agenda').finally(() => {
           this.loading = false;
           this.uiBlock.hide();
         });

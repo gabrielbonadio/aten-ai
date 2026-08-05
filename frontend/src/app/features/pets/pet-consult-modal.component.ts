@@ -21,6 +21,8 @@ export class PetConsultModalComponent {
 
   readonly open = input(false);
   readonly petId = input.required<string>();
+  /** Quando aberto a partir da agenda — back marca COMPLETED ao salvar o prontuário. */
+  readonly appointmentId = input<string | null>(null);
   readonly dismissed = output<void>();
   readonly saved = output<void>();
 
@@ -177,11 +179,13 @@ export class PetConsultModalComponent {
 
     this.submitting.set(true);
     const petId = this.petId();
+    const linkedAppointmentId = this.appointmentId()?.trim() || null;
     const returnIso = returnDateRaw ? this.dateYmdToIso(returnDateRaw)! : '';
 
     this.medicalRecordService
       .create({
         petId,
+        appointmentId: linkedAppointmentId,
         symptoms: v.symptoms.trim(),
         diagnosis: v.diagnosis.trim(),
         prescription: v.prescription?.trim() ? v.prescription.trim() : null,
@@ -190,7 +194,10 @@ export class PetConsultModalComponent {
       .pipe(
         switchMap(() => {
           if (!scheduleReturn) {
-            return of({ outcome: 'record' as const });
+            return of({
+              outcome: 'record' as const,
+              completedAppointment: !!linkedAppointmentId
+            });
           }
           return this.appointmentService
             .create({
@@ -200,9 +207,16 @@ export class PetConsultModalComponent {
               status: 'SCHEDULED'
             })
             .pipe(
-              map(() => ({ outcome: 'both' as const })),
+              map(() => ({
+                outcome: 'both' as const,
+                completedAppointment: !!linkedAppointmentId
+              })),
               catchError((err: unknown) =>
-                of({ outcome: 'partial' as const, appointmentError: err })
+                of({
+                  outcome: 'partial' as const,
+                  appointmentError: err,
+                  completedAppointment: !!linkedAppointmentId
+                })
               )
             );
         })
@@ -211,11 +225,24 @@ export class PetConsultModalComponent {
         next: (r) => {
           this.submitting.set(false);
           if (r.outcome === 'both') {
-            this.notifications.success('Prontuário salvo e retorno agendado com sucesso!');
+            this.notifications.success(
+              r.completedAppointment
+                ? 'Consulta concluída, prontuário salvo e retorno agendado.'
+                : 'Prontuário salvo e retorno agendado com sucesso!'
+            );
           } else if (r.outcome === 'record') {
-            this.notifications.success('Atendimento registrado no prontuário.');
+            this.notifications.success(
+              r.completedAppointment
+                ? 'Consulta concluída e registrada no prontuário.'
+                : 'Atendimento registrado no prontuário.'
+            );
           } else {
-            this.notifications.warning(this.extractAppointmentMessage(r.appointmentError));
+            const base = this.extractAppointmentMessage(r.appointmentError);
+            this.notifications.warning(
+              r.completedAppointment
+                ? `Consulta concluída. ${base}`
+                : base
+            );
           }
           this.saved.emit();
           this.closeModal();

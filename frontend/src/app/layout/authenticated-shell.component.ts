@@ -2,7 +2,8 @@ import { NgClass } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from '../components/ui/sidebar/sidebar.component';
-import { APP_SIDEBAR_NAV } from '../core/navigation/app-sidebar.nav';
+import { sidebarNavForRole } from '../core/navigation/app-sidebar.nav';
+import { AuthService } from '../core/services/auth.service';
 import { ShellLayoutService } from '../core/services/shell-layout.service';
 
 @Component({
@@ -51,8 +52,9 @@ import { ShellLayoutService } from '../core/services/shell-layout.service';
   `
 })
 export class AuthenticatedShellComponent {
+  private readonly auth = inject(AuthService);
   readonly shell = inject(ShellLayoutService);
-  readonly navItems = APP_SIDEBAR_NAV;
+  readonly navItems = sidebarNavForRole(this.auth.isAdmin());
 
   onSidebarToggle(): void {
     if (this.shell.mobileNavOpen()) {

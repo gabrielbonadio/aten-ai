@@ -1,4 +1,5 @@
 import { NgClass } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -7,6 +8,7 @@ import type { PaginationMeta } from '../../core/models/pagination.model';
 import { UI_PAGE_SIZE } from '../../core/models/pagination.model';
 import type { Pet } from '../../core/models/pet.model';
 import { ClinicBrandingService } from '../../core/services/clinic-branding.service';
+import { AuthService } from '../../core/services/auth.service';
 import { PetService } from '../../core/services/pet.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
@@ -34,8 +36,10 @@ export class PetListComponent implements OnInit {
   private readonly petService = inject(PetService);
   private readonly router = inject(Router);
   private readonly notifications = inject(NotificationService);
+  private readonly auth = inject(AuthService);
   readonly brand = inject(ClinicBrandingService);
 
+  readonly isAdmin = this.auth.isAdmin();
   readonly pets = signal<Pet[]>([]);
   readonly pageMeta = signal<PaginationMeta | null>(null);
   readonly page = signal(1);
@@ -128,6 +132,7 @@ export class PetListComponent implements OnInit {
   }
 
   deletePet(pet: Pet): void {
+    if (!this.isAdmin) return;
     this.petToDelete.set({ id: pet.id, name: pet.name ?? '—' });
   }
 
@@ -137,7 +142,7 @@ export class PetListComponent implements OnInit {
 
   confirmDeletePet(): void {
     const d = this.petToDelete();
-    if (!d?.id || this.deleting()) return;
+    if (!d?.id || this.deleting() || !this.isAdmin) return;
     this.deleting.set(true);
     this.petService.remove(d.id).subscribe({
       next: () => {
@@ -146,8 +151,9 @@ export class PetListComponent implements OnInit {
         this.petToDelete.set(null);
         this.loadPets();
       },
-      error: () => {
+      error: (err: unknown) => {
         this.deleting.set(false);
+        if (err instanceof HttpErrorResponse && err.status === 403) return;
         this.notifications.error('Não foi possível excluir o pet.');
       }
     });

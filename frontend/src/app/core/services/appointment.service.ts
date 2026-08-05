@@ -7,7 +7,18 @@ import {
   type PaginatedResponse,
   unwrapPaginatedList
 } from '../models/pagination.model';
-import type { Appointment, CreateAppointmentPayload } from '../models/appointment.model';
+import type {
+  Appointment,
+  AppointmentAssigneeFilter,
+  AppointmentStatusCode,
+  CreateAppointmentPayload,
+  UpdateAppointmentStatusPayload
+} from '../models/appointment.model';
+
+export type ListAppointmentsOptions = {
+  /** `me` ou UUID do profissional. */
+  assignedUserId?: AppointmentAssigneeFilter | null;
+};
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
@@ -17,8 +28,12 @@ export class AppointmentService {
     return `${environment.apiUrl.replace(/\/$/, '')}/appointments`;
   }
 
-  findAll(): Observable<Appointment[]> {
-    const params = new HttpParams().set('page', '1').set('pageSize', String(LIST_PAGE_SIZE));
+  findAll(options?: ListAppointmentsOptions): Observable<Appointment[]> {
+    let params = new HttpParams().set('page', '1').set('pageSize', String(LIST_PAGE_SIZE));
+    const assignee = options?.assignedUserId?.trim();
+    if (assignee) {
+      params = params.set('assignedUserId', assignee);
+    }
     return this.http
       .get<PaginatedResponse<Appointment> | Appointment[]>(this.baseUrl(), { params })
       .pipe(
@@ -36,6 +51,14 @@ export class AppointmentService {
 
   update(id: string, data: Partial<CreateAppointmentPayload>): Observable<Appointment> {
     return this.http.put<Appointment>(`${this.baseUrl()}/${encodeURIComponent(id)}`, data);
+  }
+
+  updateStatus(id: string, status: AppointmentStatusCode): Observable<Appointment> {
+    const body: UpdateAppointmentStatusPayload = { status };
+    return this.http.patch<Appointment>(
+      `${this.baseUrl()}/${encodeURIComponent(id)}/status`,
+      body
+    );
   }
 
   remove(id: string): Observable<void> {

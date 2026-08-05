@@ -5,8 +5,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import type { Pet } from '../../core/models/pet.model';
 import type { Appointment, AppointmentType, CreateAppointmentPayload } from '../../core/models/appointment.model';
+import type { TeamMember } from '../../core/models/team-member.model';
 import { AppointmentService } from '../../core/services/appointment.service';
+import { AuthService } from '../../core/services/auth.service';
 import { PetService } from '../../core/services/pet.service';
+import { TeamService } from '../../core/services/team.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
 
 const APPOINTMENT_TYPES: { label: string; value: AppointmentType }[] = [
@@ -26,6 +29,8 @@ export class AppointmentCreateModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly petService = inject(PetService);
   private readonly appointmentService = inject(AppointmentService);
+  private readonly teamService = inject(TeamService);
+  private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
 
   readonly open = input(false);
@@ -37,6 +42,8 @@ export class AppointmentCreateModalComponent implements OnInit {
 
   readonly pets = signal<Pet[]>([]);
   readonly petsLoading = signal(false);
+  readonly professionals = signal<TeamMember[]>([]);
+  readonly professionalsLoading = signal(false);
   readonly submitting = signal(false);
 
   readonly petSearchTerm = signal('');
@@ -49,7 +56,8 @@ export class AppointmentCreateModalComponent implements OnInit {
   readonly form = this.fb.nonNullable.group({
     petId: ['', Validators.required],
     scheduledAtLocal: ['', Validators.required],
-    type: this.fb.nonNullable.control<AppointmentType>('CONSULTATION', Validators.required)
+    type: this.fb.nonNullable.control<AppointmentType>('CONSULTATION', Validators.required),
+    assignedUserId: ['']
   });
 
   readonly filteredPets = computed(() => {
@@ -63,35 +71,40 @@ export class AppointmentCreateModalComponent implements OnInit {
     });
   });
 
-  constructor() {}
-
   ngOnInit(): void {
-    // Obrigatório: garante carga de pets mesmo fora do ciclo do `open()`.
     this.loadPets();
+    this.loadProfessionals();
   }
 
-  /** Imperativo: preparar estado para criação (sem effects). */
+  private defaultAssigneeId(): string {
+    return this.auth.getStoredUser()?.id?.trim() || '';
+  }
+
   openForCreate(): void {
     this.form.reset({
       petId: '',
       scheduledAtLocal: '',
-      type: 'CONSULTATION'
+      type: 'CONSULTATION',
+      assignedUserId: this.defaultAssigneeId()
     });
     this.petSearchTerm.set('');
     this.petSelectedName.set('');
     this.petQuery.set('');
     this.petDropdownOpen.set(false);
     this.loadPets();
+    this.loadProfessionals();
   }
 
-  /** Imperativo: preparar estado para edição (sem effects). */
   openForEdit(appointment: Appointment): void {
     const iso = this.whenOf(appointment);
     const local = iso ? this.isoToLocalDatetime(iso) : '';
+    const assignee =
+      appointment.assignedUserId?.trim() || appointment.assignedUser?.id?.trim() || '';
     this.form.reset({
       petId: appointment.petId,
       scheduledAtLocal: local,
-      type: this.normalizeType(appointment.type)
+      type: this.normalizeType(appointment.type),
+      assignedUserId: assignee
     });
     const selectedName = appointment.pet?.name ?? '';
     this.petSearchTerm.set(selectedName);
@@ -99,6 +112,67 @@ export class AppointmentCreateModalComponent implements OnInit {
     this.petQuery.set('');
     this.petDropdownOpen.set(false);
     this.loadPets();
+    this.loadProfessionals(appointment);
+  }
+
+  private loadProfessionals(editing?: Appointment | null): void {
+    this.professionalsLoading.set(true);
+    this.teamService.listProfessionals().subscribe({
+      next: (list) => {
+        this.professionals.set(this.mergeProfessionals(list, editing));
+        this.professionalsLoading.set(false);
+        this.ensureAssigneeInList();
+      },
+      error: () => {
+        this.professionals.set(this.mergeProfessionals([], editing));
+        this.professionalsLoading.set(false);
+        this.ensureAssigneeInList();
+      }
+    });
+  }
+
+  private mergeProfessionals(
+    list: TeamMember[],
+    editing?: Appointment | null
+  ): TeamMember[] {
+    const byId = new Map<string, TeamMember>();
+    for (const m of list) {
+      if (m?.id) byId.set(m.id, m);
+    }
+
+    const me = this.auth.getStoredUser();
+    if (me?.id && !byId.has(me.id)) {
+      byId.set(me.id, {
+        id: me.id,
+        name: me.name?.trim() || me.email,
+        email: me.email,
+        role: me.role
+      });
+    }
+
+    const assignedId = editing?.assignedUserId?.trim() || editing?.assignedUser?.id?.trim();
+    const assignedName = editing?.assignedUser?.name?.trim();
+    if (assignedId && !byId.has(assignedId)) {
+      byId.set(assignedId, {
+        id: assignedId,
+        name: assignedName || 'Profissional',
+        email: '',
+        role: 'MEMBER'
+      });
+    }
+
+    return Array.from(byId.values()).sort((a, b) =>
+      (a.name || a.email).localeCompare(b.name || b.email, 'pt-BR')
+    );
+  }
+
+  private ensureAssigneeInList(): void {
+    const current = this.form.controls.assignedUserId.value?.trim();
+    if (!current) return;
+    if (this.professionals().some((p) => p.id === current)) return;
+    if (!this.editingAppointment()) {
+      this.form.controls.assignedUserId.setValue(this.defaultAssigneeId());
+    }
   }
 
   private loadPets(): void {
@@ -109,8 +183,6 @@ export class AppointmentCreateModalComponent implements OnInit {
         this.pets.set(safe);
         this.petsLoading.set(false);
 
-        // Se estiver editando e o nome do pet não veio no payload da API,
-        // resolve pelo petId para não deixar o input visual vazio.
         const editing = this.editingAppointment();
         if (editing && !this.petSearchTerm().trim()) {
           const found = safe.find((p) => p.id === editing.petId);
@@ -134,7 +206,6 @@ export class AppointmentCreateModalComponent implements OnInit {
 
   onPetSearchFocus(event: FocusEvent): void {
     this.petDropdownOpen.set(true);
-    // Ao focar, mostra lista completa (sem filtrar pelo texto atual)
     this.petQuery.set('');
 
     const input = event.target as HTMLInputElement | null;
@@ -155,7 +226,6 @@ export class AppointmentCreateModalComponent implements OnInit {
     this.petSearchTerm.set(p.name);
     this.petSelectedName.set(p.name);
     this.petQuery.set('');
-    // Fechamento na seleção (obrigatório)
     this.petDropdownOpen.set(false);
   }
 
@@ -164,13 +234,13 @@ export class AppointmentCreateModalComponent implements OnInit {
     this.form.reset({
       petId: '',
       scheduledAtLocal: '',
-      type: 'CONSULTATION'
+      type: 'CONSULTATION',
+      assignedUserId: this.defaultAssigneeId()
     });
     this.petSearchTerm.set('');
     this.petSelectedName.set('');
     this.petQuery.set('');
     this.petDropdownOpen.set(false);
-    // O editingAppointment é controlado pelo pai; ao emitir dismissed, o pai limpa esse estado.
     this.dismissed.emit();
   }
 
@@ -194,7 +264,6 @@ export class AppointmentCreateModalComponent implements OnInit {
       if (typeof m === 'string' && m.trim()) return m;
     }
     if (typeof body === 'string' && body.trim()) {
-      // Evita mostrar HTML cru (ex.: 404 do proxy) no toaster.
       if (/<(html|!doctype)/i.test(body)) return 'Erro ao conectar com o servidor.';
       return body;
     }
@@ -233,7 +302,6 @@ export class AppointmentCreateModalComponent implements OnInit {
     if (raw === 'VACCINE') return 'VACCINE';
     if (raw === 'SURGERY') return 'SURGERY';
     if (raw === 'OTHER') return 'OTHER';
-    // Se vier traduzido (legado)
     if (raw === 'CONSULTA') return 'CONSULTATION';
     if (raw === 'VACINA') return 'VACCINE';
     if (raw === 'CIRURGIA') return 'SURGERY';
@@ -261,10 +329,12 @@ export class AppointmentCreateModalComponent implements OnInit {
       return;
     }
 
+    const assigned = v.assignedUserId?.trim() || null;
     const payload: CreateAppointmentPayload = {
       petId: v.petId,
       date: iso,
-      type: v.type
+      type: v.type,
+      assignedUserId: assigned
     };
 
     this.submitting.set(true);
@@ -276,7 +346,9 @@ export class AppointmentCreateModalComponent implements OnInit {
     req$.subscribe({
       next: () => {
         this.submitting.set(false);
-        this.notifications.success(editing?.id ? 'Agendamento atualizado com sucesso.' : 'Agendamento criado com sucesso.');
+        this.notifications.success(
+          editing?.id ? 'Agendamento atualizado com sucesso.' : 'Agendamento criado com sucesso.'
+        );
         this.created.emit();
         this.closeModal();
       },
@@ -287,4 +359,3 @@ export class AppointmentCreateModalComponent implements OnInit {
     });
   }
 }
-

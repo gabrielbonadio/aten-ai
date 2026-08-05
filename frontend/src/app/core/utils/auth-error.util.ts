@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
  */
 export function mapAuthHttpError(
   err: unknown,
-  context: 'login' | 'signup' | 'forgot' | 'reset'
+  context: 'login' | 'signup' | 'forgot' | 'reset' | 'invite'
 ): string {
   const status = err instanceof HttpErrorResponse ? err.status : (err as { status?: number })?.status;
   const apiMessage = extractApiMessage(err);
@@ -35,6 +35,19 @@ export function mapAuthHttpError(
 
   if (context === 'forgot') {
     return apiMessage || 'Não foi possível enviar o e-mail. Tente novamente.';
+  }
+
+  if (context === 'invite') {
+    if (status === 400 || status === 404) {
+      return (
+        apiMessage ||
+        'Não foi possível aceitar o convite. O link pode ser inválido ou ter expirado.'
+      );
+    }
+    if (status === 409) {
+      return apiMessage || 'Esta conta já foi ativada. Faça login.';
+    }
+    return apiMessage || 'Não foi possível aceitar o convite. Tente novamente.';
   }
 
   // reset

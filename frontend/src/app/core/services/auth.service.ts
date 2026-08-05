@@ -199,7 +199,7 @@ export class AuthService {
     );
   }
 
-  /** Usuário em localStorage (role para UI de settings). */
+  /** Usuário em localStorage (role para UI). */
   getStoredUser(): CurrentUser | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_USER);
@@ -208,6 +208,18 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /** Role normalizado (ADMIN | MEMBER | …) a partir do usuário armazenado. */
+  getRole(): string | null {
+    const role = this.getStoredUser()?.role;
+    if (typeof role !== 'string' || !role.trim()) return null;
+    return role.trim().toUpperCase();
+  }
+
+  /** true quando o usuário autenticado é ADMIN do tenant. */
+  isAdmin(): boolean {
+    return this.getRole() === 'ADMIN';
   }
 
   /**
@@ -264,6 +276,19 @@ export class AuthService {
     return this.http.post<void>(
       `${this.apiBase()}/auth/reset-password`,
       { token, password },
+      this.httpOpts()
+    );
+  }
+
+  /** Aceita convite de equipe e define nome + senha (guest). */
+  acceptInvite(payload: { token: string; name: string; password: string }): Observable<void> {
+    return this.http.post<void>(
+      `${this.apiBase()}/auth/accept-invite`,
+      {
+        token: payload.token,
+        name: payload.name.trim(),
+        password: payload.password
+      },
       this.httpOpts()
     );
   }

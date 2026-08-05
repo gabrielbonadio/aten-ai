@@ -126,14 +126,16 @@
                     >
                       <lucide-icon name="pencil" class="h-4 w-4"></lucide-icon>
                     </button>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-red-500/40 dark:hover:bg-red-500/10"
-                      (click)="deletePet(pet)"
-                      aria-label="Excluir pet"
-                    >
-                      <lucide-icon name="trash-2" class="h-4 w-4"></lucide-icon>
-                    </button>
+                    @if (isAdmin) {
+                      <button
+                        type="button"
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-red-500/40 dark:hover:bg-red-500/10"
+                        (click)="deletePet(pet)"
+                        aria-label="Excluir pet"
+                      >
+                        <lucide-icon name="trash-2" class="h-4 w-4"></lucide-icon>
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>

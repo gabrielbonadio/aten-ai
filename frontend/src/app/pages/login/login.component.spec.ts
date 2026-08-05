@@ -15,7 +15,8 @@ describe('LoginComponent', () => {
   let router: Router;
 
   beforeEach(async () => {
-    authService = jasmine.createSpyObj<AuthService>('AuthService', ['login']);
+    authService = jasmine.createSpyObj<AuthService>('AuthService', ['login', 'loginTotp', 'isAdmin']);
+    authService.isAdmin.and.returnValue(true);
     notifications = jasmine.createSpyObj<NotificationService>('NotificationService', [
       'success',
       'error',
@@ -121,14 +122,12 @@ describe('LoginComponent', () => {
     component.submit();
     tick();
 
-    expect(component.errorMessage).toBe(
-      'E-mail ou senha incorretos. Verifique e tente novamente.'
-    );
+    expect(component.errorMessage).toBe('Credenciais inválidas.');
     expect(router.navigateByUrl).not.toHaveBeenCalled();
     expect(component.loading).toBeFalse();
 
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('E-mail ou senha incorretos');
+    expect(compiled.textContent).toContain('Credenciais inválidas');
   }));
 });

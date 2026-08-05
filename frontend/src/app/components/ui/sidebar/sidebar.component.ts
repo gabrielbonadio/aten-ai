@@ -16,6 +16,8 @@ export type SidebarNavItem = {
    * Default: true.
    */
   exact?: boolean;
+  /** Se true, item só aparece para ADMIN. */
+  adminOnly?: boolean;
 };
 
 @Component({

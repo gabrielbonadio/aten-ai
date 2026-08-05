@@ -8,6 +8,7 @@ import { decodeJwtPayload } from '../utils/jwt.util';
 import { buildValidJwt } from '../testing/jwt-test.util';
 import { AuthService } from '../services/auth.service';
 import { ClinicBrandingService } from '../services/clinic-branding.service';
+import { NotificationService } from '../../shared/notifications/notification.service';
 import { authInterceptor, resetAuthInterceptorState } from './auth.interceptor';
 
 describe('authInterceptor', () => {
@@ -15,6 +16,7 @@ describe('authInterceptor', () => {
   let httpMock: HttpTestingController;
   let authService: jasmine.SpyObj<AuthService>;
   let router: jasmine.SpyObj<Router>;
+  let notifications: jasmine.SpyObj<NotificationService>;
 
   const apiBase = environment.apiUrl.replace(/\/$/, '');
   const tenantId = '42';
@@ -33,6 +35,11 @@ describe('authInterceptor', () => {
     authService.getRefreshToken.and.returnValue(null);
     router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
     const branding = jasmine.createSpyObj<ClinicBrandingService>('ClinicBrandingService', ['reset']);
+    notifications = jasmine.createSpyObj<NotificationService>('NotificationService', [
+      'success',
+      'error',
+      'warning'
+    ]);
 
     TestBed.configureTestingModule({
       providers: [
@@ -40,6 +47,7 @@ describe('authInterceptor', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authService },
         { provide: ClinicBrandingService, useValue: branding },
+        { provide: NotificationService, useValue: notifications },
         { provide: Router, useValue: router }
       ]
     });
@@ -188,5 +196,20 @@ describe('authInterceptor', () => {
 
     expect(authService.logout).not.toHaveBeenCalled();
     expect(authService.refresh).not.toHaveBeenCalled();
+  });
+
+  it('exibe toast Sem permissão em 403 da API', () => {
+    http.delete(`${apiBase}/pets/abc`).subscribe({
+      next: () => fail('deveria falhar com 403'),
+      error: (err) => {
+        expect(err.status).toBe(403);
+      }
+    });
+
+    const req = httpMock.expectOne(`${apiBase}/pets/abc`);
+    req.flush({ message: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notifications.error).toHaveBeenCalledWith('Sem permissão');
+    expect(authService.logout).not.toHaveBeenCalled();
   });
 });
