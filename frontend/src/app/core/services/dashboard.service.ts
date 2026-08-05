@@ -8,6 +8,11 @@ export type DashboardMetricsResponse = {
     totalPets: number;
     totalTutors: number;
     appointmentsTodayCount: number;
+    /**
+     * Soma amountCents com paymentStatus=PAID do dia (quando o BE expuser).
+     * Ausente → o dashboard calcula client-side só com `todayAppointments`.
+     */
+    receivedTodayCents?: number | null;
   };
   todayAppointments: unknown[];
 };

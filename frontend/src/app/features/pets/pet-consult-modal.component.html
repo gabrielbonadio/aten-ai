@@ -95,6 +95,42 @@
           />
         </div>
 
+        @if (appointmentId()) {
+          <div
+            class="rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/40"
+          >
+            <div class="text-sm font-medium text-zinc-800 dark:text-zinc-200">Pagamento (opcional)</div>
+            <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Valor do atendimento. Você também pode ajustar depois na agenda.
+            </p>
+            <div class="mt-3">
+              <label class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-200" for="amountDisplay"
+                >Valor (R$)</label
+              >
+              <input
+                id="amountDisplay"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                formControlName="amountDisplay"
+                (input)="onAmountInput($event)"
+                class="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                placeholder="R$ 0,00"
+                [disabled]="submitting()"
+              />
+            </div>
+            <label class="mt-3 flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                formControlName="markPaid"
+                class="mt-1 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/40 dark:border-zinc-600 dark:bg-zinc-900"
+                [disabled]="submitting()"
+              />
+              <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200">Marcar como pago</span>
+            </label>
+          </div>
+        }
+
         <div class="rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <label class="flex cursor-pointer items-start gap-3">
             <input

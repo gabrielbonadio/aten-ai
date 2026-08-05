@@ -36,6 +36,6 @@ export function confirmationStatusLabel(
 ): string | null {
   if (code === 'CONFIRMED') return 'Confirmado';
   if (code === 'PENDING') return 'Pendente';
-  if (code === 'RESCHEDULED') return 'Reagendado';
+  if (code === 'RESCHEDULED') return 'Remarcado';
   return null;
 }

@@ -2,6 +2,7 @@ import { importProvidersFrom } from '@angular/core';
 import {
   AlertCircle,
   ArrowLeft,
+  Banknote,
   Bell,
   Calendar,
   CalendarCheck,
@@ -47,6 +48,7 @@ export const lucideAppIconsProviders = importProvidersFrom(
   LucideAngularModule.pick({
     AlertCircle,
     ArrowLeft,
+    Banknote,
     Bell,
     Calendar,
     CalendarCheck,

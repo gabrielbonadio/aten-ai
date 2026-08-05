@@ -6,6 +6,7 @@ import type {
   Appointment,
   AppointmentAssigneeFilter,
   AppointmentConfirmationStatus,
+  AppointmentPaymentStatus,
   AppointmentStatusCode
 } from '../../core/models/appointment.model';
 import type { TeamMember } from '../../core/models/team-member.model';
@@ -23,6 +24,11 @@ import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component'
 import { NotificationService } from '../../shared/notifications/notification.service';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
+import {
+  formatCentsAsBRL,
+  maskBRLFromDigitCents,
+  parseBRLInputToCents
+} from '../../shared/utils/br-masks';
 import { PetConsultModalComponent } from '../pets/pet-consult-modal.component';
 import { AppointmentCreateModalComponent } from './appointment-create-modal.component';
 
@@ -36,6 +42,7 @@ type AgendaRowView = Appointment & {
   statusCode: AppointmentStatusCode;
   confirmationCode: AppointmentConfirmationStatus | null;
   confirmationLabel: string | null;
+  paymentCode: AppointmentPaymentStatus | null;
   sortMs: number;
 };
 
@@ -83,6 +90,10 @@ export class AgendaComponent implements OnInit {
   readonly consultModalOpen = signal(false);
   readonly consultPetId = signal<string | null>(null);
   readonly consultAppointmentId = signal<string | null>(null);
+
+  /** Drafts mascarados de valor por id (S7). */
+  readonly paymentDrafts = signal<Record<string, string>>({});
+  readonly paymentBusyId = signal<string | null>(null);
 
   /** Filtro: mês inteiro (padrão) ou intervalo de datas. */
   readonly filterMode = signal<FilterMode>('month');
@@ -134,7 +145,8 @@ export class AgendaComponent implements OnInit {
           statusCode,
           statusLabel: this.statusLabelFor(statusCode),
           confirmationCode,
-          confirmationLabel: this.confirmationLabelFor(confirmationCode)
+          confirmationLabel: this.confirmationLabelFor(confirmationCode),
+          paymentCode: this.normalizePayment(a.paymentStatus)
         };
       })
       .filter((row) => {
@@ -162,6 +174,7 @@ export class AgendaComponent implements OnInit {
           statusCode: row.statusCode,
           confirmationCode: row.confirmationCode,
           confirmationLabel: row.confirmationLabel,
+          paymentCode: row.paymentCode,
           sortMs: row.sortMs
         })
       );
@@ -203,7 +216,9 @@ export class AgendaComponent implements OnInit {
       pf === 'all' ? null : pf === 'me' ? 'me' : pf;
     this.appointmentService.findAll({ assignedUserId }).subscribe({
       next: (list) => {
-        this.appointments.set(Array.isArray(list) ? list : []);
+        const items = Array.isArray(list) ? list : [];
+        this.appointments.set(items);
+        this.seedPaymentDrafts(items);
         this.loading.set(false);
       },
       error: () => {
@@ -211,6 +226,19 @@ export class AgendaComponent implements OnInit {
         this.loadError.set(true);
       }
     });
+  }
+
+  private seedPaymentDrafts(items: Appointment[]): void {
+    const drafts: Record<string, string> = { ...this.paymentDrafts() };
+    for (const a of items) {
+      if (drafts[a.id] === undefined) {
+        drafts[a.id] = formatCentsAsBRL(a.amountCents ?? null);
+      } else if (!this.paymentBusyId() || this.paymentBusyId() !== a.id) {
+        // Após reload, alinha drafts aos valores da API (exceto se estiver salvando).
+        drafts[a.id] = formatCentsAsBRL(a.amountCents ?? null);
+      }
+    }
+    this.paymentDrafts.set(drafts);
   }
 
   private loadProfessionals(): void {
@@ -366,6 +394,93 @@ export class AgendaComponent implements OnInit {
     if (code === 'RESCHEDULED')
       return 'border-violet-200/80 bg-violet-50/70 text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300';
     return 'border-zinc-200/80 bg-zinc-50/80 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-400';
+  }
+
+  confirmationTitle(code: AppointmentConfirmationStatus | null): string {
+    if (code === 'RESCHEDULED') {
+      return 'Remarcado pelo tutor no WhatsApp — horário já atualizado nesta lista';
+    }
+    return 'Confirmação via WhatsApp';
+  }
+
+  normalizePayment(value: string | null | undefined): AppointmentPaymentStatus | null {
+    const s = (value ?? '').trim().toUpperCase();
+    if (s === 'PAID' || s === 'PAGO') return 'PAID';
+    if (s === 'WAIVED' || s === 'ISENTO') return 'WAIVED';
+    if (s === 'PENDING' || s === 'PENDENTE' || s === '') return 'PENDING';
+    return 'PENDING';
+  }
+
+  paymentLabel(code: AppointmentPaymentStatus | null): string {
+    if (code === 'PAID') return 'Pago';
+    if (code === 'WAIVED') return 'Isento';
+    return 'Pendente';
+  }
+
+  paymentPillClass(code: AppointmentPaymentStatus | null): string {
+    if (code === 'PAID')
+      return 'border-emerald-200/80 bg-emerald-50/80 text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200';
+    if (code === 'WAIVED')
+      return 'border-zinc-200/80 bg-zinc-50/80 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-400';
+    return 'border-amber-200/80 bg-amber-50/80 text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100';
+  }
+
+  paymentDraft(id: string): string {
+    return this.paymentDrafts()[id] ?? '';
+  }
+
+  onPaymentAmountInput(id: string, event: Event): void {
+    const raw = (event.target as HTMLInputElement | null)?.value ?? '';
+    this.paymentDrafts.update((m) => ({ ...m, [id]: maskBRLFromDigitCents(raw) }));
+  }
+
+  isPaymentBusy(id: string): boolean {
+    return this.paymentBusyId() === id || this.isStatusBusy(id);
+  }
+
+  savePaymentAmount(a: AgendaRowView): void {
+    if (this.isPaymentBusy(a.id) || a.statusCode === 'CANCELED') return;
+    const cents = parseBRLInputToCents(this.paymentDraft(a.id));
+    this.paymentBusyId.set(a.id);
+    this.appointmentService.updatePayment(a.id, { amountCents: cents }).subscribe({
+      next: () => {
+        this.notifications.success(cents == null ? 'Valor removido.' : 'Valor salvo.');
+        this.paymentBusyId.set(null);
+        this.load();
+      },
+      error: () => {
+        this.paymentBusyId.set(null);
+        this.notifications.error('Não foi possível salvar o valor.');
+      }
+    });
+  }
+
+  markAppointmentPaid(a: AgendaRowView): void {
+    if (this.isPaymentBusy(a.id) || a.statusCode === 'CANCELED') return;
+    if (a.paymentCode === 'PAID') return;
+    const cents = parseBRLInputToCents(this.paymentDraft(a.id));
+    if (cents == null || cents <= 0) {
+      this.notifications.warning('Informe um valor maior que zero antes de marcar como pago.');
+      return;
+    }
+    this.paymentBusyId.set(a.id);
+    this.appointmentService
+      .updatePayment(a.id, { amountCents: cents, paymentStatus: 'PAID' })
+      .subscribe({
+        next: () => {
+          this.notifications.success('Marcado como pago.');
+          this.paymentBusyId.set(null);
+          this.load();
+        },
+        error: () => {
+          this.paymentBusyId.set(null);
+          this.notifications.error('Não foi possível marcar como pago.');
+        }
+      });
+  }
+
+  amountDisplay(a: AgendaRowView): string {
+    return formatCentsAsBRL(a.amountCents ?? null) || '—';
   }
 
   isStatusBusy(id: string): boolean {

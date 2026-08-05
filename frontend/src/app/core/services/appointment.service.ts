@@ -12,6 +12,7 @@ import type {
   AppointmentAssigneeFilter,
   AppointmentStatusCode,
   CreateAppointmentPayload,
+  UpdateAppointmentPaymentPayload,
   UpdateAppointmentStatusPayload
 } from '../models/appointment.model';
 
@@ -58,6 +59,14 @@ export class AppointmentService {
     return this.http.patch<Appointment>(
       `${this.baseUrl()}/${encodeURIComponent(id)}/status`,
       body
+    );
+  }
+
+  /** Atualiza valor e/ou status de pagamento (S7). */
+  updatePayment(id: string, payload: UpdateAppointmentPaymentPayload): Observable<Appointment> {
+    return this.http.patch<Appointment>(
+      `${this.baseUrl()}/${encodeURIComponent(id)}/payment`,
+      payload
     );
   }
 

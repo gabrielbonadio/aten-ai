@@ -254,6 +254,57 @@
                         <span class="text-zinc-300 dark:text-zinc-600">·</span>
                         Profissional: {{ a.professionalName }}
                       </div>
+                      @if (a.statusCode !== 'CANCELED') {
+                        <div
+                          class="mt-2 flex flex-wrap items-center gap-2"
+                          (click)="$event.stopPropagation()"
+                        >
+                          <span
+                            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                            [ngClass]="paymentPillClass(a.paymentCode)"
+                          >
+                            {{ paymentLabel(a.paymentCode) }}
+                            @if (a.amountCents != null && a.amountCents > 0) {
+                              <span class="opacity-80">· {{ amountDisplay(a) }}</span>
+                            }
+                          </span>
+                          <label class="sr-only" [attr.for]="'pay-amount-' + a.id">Valor (R$)</label>
+                          <input
+                            [id]="'pay-amount-' + a.id"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            class="w-[7.5rem] rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                            placeholder="R$ 0,00"
+                            [value]="paymentDraft(a.id)"
+                            [disabled]="isPaymentBusy(a.id) || a.paymentCode === 'PAID'"
+                            (input)="onPaymentAmountInput(a.id, $event)"
+                          />
+                          @if (a.paymentCode !== 'PAID') {
+                            <button
+                              type="button"
+                              class="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                              [disabled]="isPaymentBusy(a.id)"
+                              (click)="savePaymentAmount(a)"
+                            >
+                              @if (paymentBusyId() === a.id) {
+                                Salvando…
+                              } @else {
+                                Salvar valor
+                              }
+                            </button>
+                            <button
+                              type="button"
+                              class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+                              [disabled]="isPaymentBusy(a.id)"
+                              (click)="markAppointmentPaid(a)"
+                            >
+                              <lucide-icon name="banknote" class="h-3 w-3" aria-hidden="true"></lucide-icon>
+                              Marcar pago
+                            </button>
+                          }
+                        </div>
+                      }
                     </div>
 
                     <div class="flex flex-wrap items-center justify-end gap-2">
@@ -273,7 +324,7 @@
                         <span
                           class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
                           [ngClass]="confirmationPillClass(a.confirmationCode)"
-                          title="Confirmação via WhatsApp"
+                          [attr.title]="confirmationTitle(a.confirmationCode)"
                         >
                           <lucide-icon name="message-circle" class="h-3 w-3 opacity-80" aria-hidden="true"></lucide-icon>
                           {{ a.confirmationLabel }}

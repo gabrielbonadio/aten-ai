@@ -10,12 +10,16 @@ import { DashboardService } from '../../core/services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
 import { LoadErrorComponent } from '../../shared/ui/load-error.component';
+import { formatCentsAsBRL } from '../../shared/utils/br-masks';
 import { AppointmentCreateModalComponent } from '../../features/appointments/appointment-create-modal.component';
 
 type DashboardCardView = {
   label: string;
   icon: string;
+  /** Número puro (pets, etc.) ou null em loading. */
   value: number | null;
+  /** Texto pronto (ex.: BRL); se setado, tem prioridade no template. */
+  display?: string | null;
 };
 
 @Component({
@@ -51,6 +55,32 @@ export class DashboardComponent implements OnInit {
     const data = this.dashboardData();
     const list = data?.todayAppointments;
     return Array.isArray(list) ? (list as any[]) : [];
+  });
+
+  /**
+   * Receita do dia (S7).
+   * Preferência: metrics.receivedTodayCents da API.
+   * Fallback: soma client-side só dos itens em `todayAppointments` (lista limitada do
+   * dashboard — pode subestimar se o BE truncar a lista e não enviar a métrica).
+   */
+  readonly receivedTodayLabel = computed(() => {
+    if (this.metricsLoading()) return null;
+    const data = this.dashboardData();
+    const fromApi = data?.metrics?.receivedTodayCents;
+    if (typeof fromApi === 'number' && Number.isFinite(fromApi)) {
+      return formatCentsAsBRL(fromApi) || 'R$ 0,00';
+    }
+    let sum = 0;
+    for (const a of this.todayAppointments()) {
+      const status = String(a?.paymentStatus ?? '')
+        .trim()
+        .toUpperCase();
+      const cents = Number(a?.amountCents);
+      if ((status === 'PAID' || status === 'PAGO') && Number.isFinite(cents) && cents > 0) {
+        sum += cents;
+      }
+    }
+    return formatCentsAsBRL(sum) || 'R$ 0,00';
   });
 
   appointmentTimeLabel(a: any): string {
@@ -128,6 +158,12 @@ export class DashboardComponent implements OnInit {
         label: 'Agendamentos hoje',
         icon: 'calendar',
         value: loading ? null : (m?.appointmentsTodayCount ?? 0)
+      },
+      {
+        label: 'Recebido hoje',
+        icon: 'banknote',
+        value: loading ? null : 0,
+        display: loading ? null : this.receivedTodayLabel()
       }
     ];
   });

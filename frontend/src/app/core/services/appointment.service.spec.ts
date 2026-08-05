@@ -62,4 +62,17 @@ describe('AppointmentService (S0/S4)', () => {
     expect(req.request.params.get('assignedUserId')).toBeNull();
     req.flush([]);
   });
+
+  it('updatePayment envia PATCH /appointments/:id/payment (S7)', () => {
+    service
+      .updatePayment('a1', { amountCents: 15000, paymentStatus: 'PAID' })
+      .subscribe((res) => {
+        expect(res.paymentStatus).toBe('PAID');
+      });
+
+    const req = httpMock.expectOne(`${api}/a1/payment`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ amountCents: 15000, paymentStatus: 'PAID' });
+    req.flush({ ...sample, amountCents: 15000, paymentStatus: 'PAID' });
+  });
 });

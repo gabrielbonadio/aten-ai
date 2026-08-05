@@ -8,6 +8,9 @@ export type AppointmentStatusCode = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
 /** Confirmação via WhatsApp (somente leitura no portal nesta fatia). */
 export type AppointmentConfirmationStatus = 'PENDING' | 'CONFIRMED' | 'RESCHEDULED';
 
+/** Caixa mínimo (S7) — sem gateway. */
+export type AppointmentPaymentStatus = 'PENDING' | 'PAID' | 'WAIVED';
+
 /** Profissional atribuído (join leve do GET /appointments). */
 export interface AppointmentAssignee {
   id: string;
@@ -26,11 +29,21 @@ export interface Appointment {
   /** Profissional responsável (S4). */
   assignedUserId?: string | null;
   assignedUser?: AppointmentAssignee | null;
+  /** Valor em centavos (S7). */
+  amountCents?: number | null;
+  /** Situação do pagamento (S7). */
+  paymentStatus?: AppointmentPaymentStatus | string | null;
 
   /** Quando a API retornar joins */
   pet?: (Pick<Pet, 'id' | 'name'> & { tutor?: Pick<PetTutorSummary, 'id' | 'name'> | null }) | null;
   /** Compat legado (preferir `pet.tutor`) */
   tutor?: Pick<PetTutorSummary, 'id' | 'name'> | null;
+}
+
+/** Corpo do PATCH /appointments/:id/payment */
+export interface UpdateAppointmentPaymentPayload {
+  amountCents?: number | null;
+  paymentStatus?: AppointmentPaymentStatus;
 }
 
 /** Corpo do POST /appointments — tenant vem do token no back-end */

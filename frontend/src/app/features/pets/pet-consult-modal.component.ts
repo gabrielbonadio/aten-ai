@@ -6,6 +6,7 @@ import { catchError, map, of, switchMap } from 'rxjs';
 import { AppointmentService } from '../../core/services/appointment.service';
 import { MedicalRecordService } from '../../core/services/medical-record.service';
 import { NotificationService } from '../../shared/notifications/notification.service';
+import { maskBRLFromDigitCents, parseBRLInputToCents } from '../../shared/utils/br-masks';
 
 @Component({
   selector: 'app-pet-consult-modal',
@@ -34,7 +35,10 @@ export class PetConsultModalComponent {
     prescription: [''],
     weight: this.fb.control<number | null>(null),
     scheduleReturn: [false],
-    returnDate: ['']
+    returnDate: [''],
+    /** Valor em máscara BRL (só quando há appointmentId). */
+    amountDisplay: [''],
+    markPaid: [false]
   });
 
   closeModal(): void {
@@ -45,7 +49,9 @@ export class PetConsultModalComponent {
       prescription: '',
       weight: null,
       scheduleReturn: false,
-      returnDate: ''
+      returnDate: '',
+      amountDisplay: '',
+      markPaid: false
     });
     this.syncReturnValidators();
     this.dismissed.emit();
@@ -62,6 +68,11 @@ export class PetConsultModalComponent {
       this.form.patchValue({ returnDate: this.defaultReturnDateStr() });
     }
     this.syncReturnValidators();
+  }
+
+  onAmountInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement | null)?.value ?? '';
+    this.form.controls.amountDisplay.setValue(maskBRLFromDigitCents(raw), { emitEvent: false });
   }
 
   private syncReturnValidators(): void {
@@ -181,6 +192,15 @@ export class PetConsultModalComponent {
     const petId = this.petId();
     const linkedAppointmentId = this.appointmentId()?.trim() || null;
     const returnIso = returnDateRaw ? this.dateYmdToIso(returnDateRaw)! : '';
+    const amountCents = linkedAppointmentId
+      ? parseBRLInputToCents(v.amountDisplay ?? '')
+      : null;
+    const markPaid = !!(linkedAppointmentId && v.markPaid);
+    if (markPaid && (amountCents == null || amountCents <= 0)) {
+      this.submitting.set(false);
+      this.notifications.warning('Informe o valor para marcar como pago.');
+      return;
+    }
 
     this.medicalRecordService
       .create({
@@ -193,10 +213,25 @@ export class PetConsultModalComponent {
       })
       .pipe(
         switchMap(() => {
+          if (!linkedAppointmentId || (amountCents == null && !markPaid)) {
+            return of({ paymentOk: true as const });
+          }
+          return this.appointmentService
+            .updatePayment(linkedAppointmentId, {
+              ...(amountCents != null ? { amountCents } : {}),
+              ...(markPaid ? { paymentStatus: 'PAID' as const } : {})
+            })
+            .pipe(
+              map(() => ({ paymentOk: true as const })),
+              catchError(() => of({ paymentOk: false as const }))
+            );
+        }),
+        switchMap((payment) => {
           if (!scheduleReturn) {
             return of({
               outcome: 'record' as const,
-              completedAppointment: !!linkedAppointmentId
+              completedAppointment: !!linkedAppointmentId,
+              paymentOk: payment.paymentOk
             });
           }
           return this.appointmentService
@@ -209,13 +244,15 @@ export class PetConsultModalComponent {
             .pipe(
               map(() => ({
                 outcome: 'both' as const,
-                completedAppointment: !!linkedAppointmentId
+                completedAppointment: !!linkedAppointmentId,
+                paymentOk: payment.paymentOk
               })),
               catchError((err: unknown) =>
                 of({
                   outcome: 'partial' as const,
                   appointmentError: err,
-                  completedAppointment: !!linkedAppointmentId
+                  completedAppointment: !!linkedAppointmentId,
+                  paymentOk: payment.paymentOk
                 })
               )
             );
@@ -242,6 +279,11 @@ export class PetConsultModalComponent {
               r.completedAppointment
                 ? `Consulta concluída. ${base}`
                 : base
+            );
+          }
+          if (!r.paymentOk) {
+            this.notifications.warning(
+              'Consulta salva, mas o valor/pagamento não pôde ser atualizado. Ajuste na agenda.'
             );
           }
           this.saved.emit();

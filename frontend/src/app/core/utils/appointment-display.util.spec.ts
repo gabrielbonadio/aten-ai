@@ -55,7 +55,7 @@ describe('appointment-display.util (S0/S1)', () => {
     it('rótulos WhatsApp em PT', () => {
       expect(confirmationStatusLabel('CONFIRMED')).toBe('Confirmado');
       expect(confirmationStatusLabel('PENDING')).toBe('Pendente');
-      expect(confirmationStatusLabel('RESCHEDULED')).toBe('Reagendado');
+      expect(confirmationStatusLabel('RESCHEDULED')).toBe('Remarcado');
       expect(confirmationStatusLabel(null)).toBeNull();
     });
   });
