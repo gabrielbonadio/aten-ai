@@ -29,16 +29,12 @@
       />
     </div>
   } @else if (vaccinations().length === 0) {
-    <div
-      class="mt-5 flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-6 py-10 text-center dark:border-zinc-800 dark:bg-zinc-950/30"
-    >
-      <div
-        class="mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-white text-zinc-500 shadow-sm dark:bg-zinc-900 dark:text-zinc-300"
-      >
+    <div class="ui-empty ui-empty--muted mt-5 px-6 py-10">
+      <div class="ui-empty__icon--muted">
         <lucide-icon name="calendar-check" class="h-5 w-5" aria-hidden="true"></lucide-icon>
       </div>
-      <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Nenhuma vacina registrada</p>
-      <p class="mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+      <p class="ui-empty__title--sm">Nenhuma vacina registrada</p>
+      <p class="ui-empty__text mt-1">
         Adicione a primeira aplicação e a data da próxima dose no formulário abaixo.
       </p>
     </div>

@@ -24,7 +24,7 @@ import { LucideAngularModule } from 'lucide-angular';
       </p>
       <button
         type="button"
-        class="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+        class="ui-btn-primary mt-5"
         (click)="retry.emit()"
       >
         Tentar novamente

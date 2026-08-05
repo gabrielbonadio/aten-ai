@@ -36,18 +36,12 @@
 
 <main class="px-4 py-6 sm:px-6">
   @if (!isAdmin) {
-    <div
-      class="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-8 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950/40"
-      role="status"
-    >
-      <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Dashboard disponível para administradores</p>
-      <p class="mt-2 max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
+    <div class="ui-empty ui-empty--muted px-8 py-16" role="status">
+      <p class="ui-empty__title--sm">Dashboard disponível para administradores</p>
+      <p class="ui-empty__text">
         Use a agenda para o dia a dia da clínica.
       </p>
-      <a
-        routerLink="/agenda"
-        class="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600"
-      >
+      <a routerLink="/agenda" class="ui-btn-primary mt-5">
         Ir para a agenda
       </a>
     </div>
@@ -101,18 +95,20 @@
             <div class="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800"></div>
           </div>
         } @else if (todayAppointments().length === 0) {
-          <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-8 py-12 text-center dark:border-zinc-800 dark:bg-zinc-950/30">
-            <div class="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-white text-zinc-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
+          <div class="ui-empty ui-empty--muted">
+            <div class="ui-empty__icon--muted">
               <lucide-icon name="coffee" class="h-6 w-6" aria-hidden="true"></lucide-icon>
             </div>
-            <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              Nenhum atendimento programado para hoje. Dia livre!
+            <div class="ui-empty__title--sm">
+              Nenhum atendimento programado para hoje
             </div>
+            <p class="ui-empty__text mt-1">Dia livre — ou agende o próximo horário.</p>
+            <a routerLink="/agenda" class="ui-btn-primary mt-5">Ir para a agenda</a>
           </div>
         } @else {
           <div class="space-y-2">
             @for (a of todayAppointments(); track a.id) {
-              <div class="flex items-center justify-between gap-4 rounded-xl border border-zinc-100 bg-white px-4 py-3 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:bg-emerald-500/5">
+              <div class="ui-surface-row flex items-center justify-between gap-4 rounded-xl border border-zinc-100 bg-white px-4 py-3 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-950/20 dark:hover:bg-emerald-500/5">
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
                     <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{{ appointmentTimeLabel(a) }}</div>

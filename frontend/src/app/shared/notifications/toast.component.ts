@@ -14,7 +14,7 @@ import { NotificationService, type NotificationVariant } from './notification.se
     >
       @for (t of notifications.items(); track t.id) {
         <div
-          class="pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm shadow-lg shadow-zinc-900/10 backdrop-blur-[2px]"
+          class="pointer-events-auto ui-toast-enter flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm shadow-lg shadow-zinc-900/10 backdrop-blur-[2px]"
           role="status"
           [attr.aria-live]="t.variant === 'error' ? 'assertive' : 'polite'"
           [ngClass]="panelClassFor(t.variant)"

@@ -17,6 +17,8 @@
   --scrollbar-track: #f4f4f5;
   --scrollbar-thumb: #d4d4d8;
   --scrollbar-thumb-hover: #a1a1aa;
+  --ui-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ui-duration: 180ms;
   color-scheme: light;
 }
 
@@ -46,6 +48,75 @@ body {
 
 .dark body {
   @apply bg-zinc-950 text-zinc-50;
+}
+
+/* —— Fase A: micro-interações e empty states (reversível) —— */
+@layer components {
+  .ui-interactive {
+    transition-property: color, background-color, border-color, opacity, box-shadow;
+    transition-duration: var(--ui-duration);
+    transition-timing-function: var(--ui-ease);
+  }
+
+  .ui-surface-row {
+    transition-property: background-color, border-color, box-shadow;
+    transition-duration: var(--ui-duration);
+    transition-timing-function: var(--ui-ease);
+  }
+
+  .ui-empty {
+    @apply flex flex-col items-center justify-center rounded-xl border border-dashed text-center;
+  }
+
+  .ui-empty--accent {
+    @apply border-emerald-200/80 bg-emerald-50/40 px-8 py-16 shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/5;
+  }
+
+  .ui-empty--muted {
+    @apply border-zinc-200 bg-zinc-50 px-8 py-12 dark:border-zinc-800 dark:bg-zinc-950/40;
+  }
+
+  .ui-empty__icon {
+    @apply mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-white text-emerald-600 shadow-sm shadow-emerald-500/10 dark:bg-zinc-900 dark:text-emerald-400;
+  }
+
+  .ui-empty__icon--muted {
+    @apply mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-white text-zinc-500 shadow-sm dark:bg-zinc-900 dark:text-zinc-300;
+  }
+
+  .ui-empty__title {
+    @apply text-lg font-semibold text-zinc-900 dark:text-zinc-50;
+  }
+
+  .ui-empty__title--sm {
+    @apply text-sm font-semibold text-zinc-900 dark:text-zinc-50;
+  }
+
+  .ui-empty__text {
+    @apply mt-2 max-w-sm text-sm text-zinc-600 dark:text-zinc-400;
+  }
+
+  .ui-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-500 dark:hover:bg-emerald-600;
+    transition-property: color, background-color, border-color, opacity, box-shadow;
+    transition-duration: var(--ui-duration);
+    transition-timing-function: var(--ui-ease);
+  }
+
+  .ui-toast-enter {
+    animation: ui-toast-in var(--ui-duration) var(--ui-ease) both;
+  }
+}
+
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Scrollbars tokenizadas (WebKit + Firefox) */
@@ -100,5 +171,9 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .ui-toast-enter {
+    animation: none !important;
   }
 }
