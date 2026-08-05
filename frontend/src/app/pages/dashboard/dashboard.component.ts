@@ -123,6 +123,35 @@ export class DashboardComponent implements OnInit {
     return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200';
   }
 
+  /** Só exibe se a API enviar paymentStatus (S7). */
+  appointmentPaymentLabel(a: any): string | null {
+    const s = String(a?.paymentStatus ?? '')
+      .trim()
+      .toUpperCase();
+    if (!s) return null;
+    if (s === 'PAID' || s === 'PAGO') {
+      const cents = Number(a?.amountCents);
+      if (Number.isFinite(cents) && cents > 0) {
+        return `Pago · ${formatCentsAsBRL(cents)}`;
+      }
+      return 'Pago';
+    }
+    if (s === 'WAIVED' || s === 'ISENTO') return 'Isento';
+    if (s === 'PENDING' || s === 'PENDENTE') return 'Pendente';
+    return null;
+  }
+
+  appointmentPaymentPillClass(a: any): string {
+    const s = String(a?.paymentStatus ?? '')
+      .trim()
+      .toUpperCase();
+    if (s === 'PAID' || s === 'PAGO')
+      return 'border-emerald-200/80 bg-emerald-50/80 text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200';
+    if (s === 'WAIVED' || s === 'ISENTO')
+      return 'border-zinc-200/80 bg-zinc-50/80 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-400';
+    return 'border-amber-200/80 bg-amber-50/80 text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100';
+  }
+
   private normalizeStatus(apiStatus: unknown): AppointmentStatusCode {
     const s = String(apiStatus ?? '')
       .trim()
