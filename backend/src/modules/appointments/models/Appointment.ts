@@ -3,6 +3,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 export type AppointmentType = 'VACCINE' | 'CONSULTATION' | 'SURGERY' | 'OTHER';
 export type AppointmentStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
 export type ConfirmationStatus = 'PENDING' | 'CONFIRMED' | 'RESCHEDULED';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'WAIVED';
 
 class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttributes<Appointment>> {
   declare id: CreationOptional<string>;
@@ -13,6 +14,9 @@ class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttri
   declare status: CreationOptional<AppointmentStatus>;
   declare notes: CreationOptional<string | null>;
   declare confirmationStatus: CreationOptional<ConfirmationStatus>;
+  declare assignedUserId: CreationOptional<string | null>;
+  declare amountCents: CreationOptional<number | null>;
+  declare paymentStatus: CreationOptional<PaymentStatus>;
   declare reminderSentAt: CreationOptional<Date | null>;
   declare followupSentAt: CreationOptional<Date | null>;
 
@@ -60,6 +64,21 @@ class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttri
           allowNull: false,
           defaultValue: 'PENDING'
         },
+        assignedUserId: {
+          type: DataTypes.UUID,
+          allowNull: true,
+          defaultValue: null
+        },
+        amountCents: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+          defaultValue: null
+        },
+        paymentStatus: {
+          type: DataTypes.ENUM('PENDING', 'PAID', 'WAIVED'),
+          allowNull: false,
+          defaultValue: 'PENDING'
+        },
         reminderSentAt: {
           type: DataTypes.DATE,
           allowNull: true
@@ -83,7 +102,15 @@ class Appointment extends Model<InferAttributes<Appointment>, InferCreationAttri
           { fields: ['date'], name: 'appointments_date_idx' },
           { fields: ['confirmationStatus'], name: 'appointments_confirmation_status_idx' },
           { fields: ['reminderSentAt'], name: 'appointments_reminder_sent_at_idx' },
-          { fields: ['followupSentAt'], name: 'appointments_followup_sent_at_idx' }
+          { fields: ['followupSentAt'], name: 'appointments_followup_sent_at_idx' },
+          {
+            fields: ['tenantId', 'assignedUserId', 'date'],
+            name: 'appointments_tenant_assigned_user_date_idx'
+          },
+          {
+            fields: ['tenantId', 'paymentStatus', 'date'],
+            name: 'appointments_tenant_payment_status_date_idx'
+          }
         ]
       }
     );

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ensureAuthenticated } from '../../shared/middlewares/ensureAuthenticated';
+import { ensureRole } from '../../shared/middlewares/ensureRole';
 import { validateSchema } from '../../shared/middlewares/validateSchema';
 import TutorController from './controllers/TutorController';
 import { createTutorSchema, listTutorsQuerySchema, updateTutorSchema } from './schemas/tutor.schema';
@@ -61,6 +62,6 @@ tutorsRoutes.get(
 
 tutorsRoutes.get('/tutors/:id', TutorController.findOne);
 tutorsRoutes.put('/tutors/:id', validateSchema(updateTutorSchema), TutorController.update);
-tutorsRoutes.delete('/tutors/:id', TutorController.remove);
+tutorsRoutes.delete('/tutors/:id', ensureRole(['ADMIN']), TutorController.remove);
 
 export default tutorsRoutes;

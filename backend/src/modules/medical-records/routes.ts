@@ -35,6 +35,11 @@ medicalRecordsRoutes.use(ensureAuthenticated);
  *   post:
  *     tags: [MedicalRecords]
  *     summary: Criar prontuário médico
+ *     description: |
+ *       Se `appointmentId` for informado (e pertencer ao mesmo tenant/pet),
+ *       o agendamento é marcado como `COMPLETED` após a criação bem-sucedida
+ *       (idempotente se já estiver `COMPLETED`). Isso habilita o job de
+ *       follow-up pós-consulta (filtra `status=COMPLETED`).
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true

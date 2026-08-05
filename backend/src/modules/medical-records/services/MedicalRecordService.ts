@@ -3,6 +3,7 @@ import { AppError, NotFoundError } from '../../../shared/errors/AppError';
 import { formatBrazilPhoneE164 } from '../../../shared/utils/formatBrazilPhoneE164';
 import webhookService from '../../../shared/services/WebhookService';
 import Appointment from '../../appointments/models/Appointment';
+import appointmentService from '../../appointments/services/AppointmentService';
 import Pet from '../../pets/models/Pet';
 import User from '../../auth/models/User';
 import Tenant from '../../tenants/models/Tenant';
@@ -55,6 +56,12 @@ class MedicalRecordService {
       prescription: data.prescription?.trim() || null,
       weight: data.weight ?? null
     });
+
+    // Prontuário com appointmentId ⇒ atendimento concluído (alimenta follow-up D+3).
+    // Idempotente via AppointmentService.updateStatus quando já está COMPLETED.
+    if (data.appointmentId) {
+      await appointmentService.updateStatus(data.appointmentId, tenantId, 'COMPLETED');
+    }
 
     const tenant = await Tenant.findByPk(tenantId);
     const tutor = (pet as Pet & { tutor: Tutor }).tutor;

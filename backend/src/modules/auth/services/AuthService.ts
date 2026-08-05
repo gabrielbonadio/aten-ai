@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import sequelize from '../../../config/database';
-import { AppError, ConflictError, ForbiddenError, UnauthorizedError } from '../../../shared/errors/AppError';
+import { AppError, BadRequestError, ConflictError, ForbiddenError, UnauthorizedError } from '../../../shared/errors/AppError';
 import { logger } from '../../../shared/logging/logger';
 import type { IMailProvider } from '../../../shared/providers/MailProvider/IMailProvider';
 import { ResendMailProvider } from '../../../shared/providers/MailProvider/ResendMailProvider';
@@ -203,7 +203,8 @@ class AuthService {
           email: normalizedEmail,
           password_hash,
           role: 'ADMIN',
-          tenantId: tenantRow.id
+          tenantId: tenantRow.id,
+          active: true
         },
         { transaction }
       );
@@ -298,6 +299,42 @@ class AuthService {
     });
   }
 
+  /**
+   * Aceita convite de equipe: define nome/senha, ativa o usuário e invalida o token.
+   * O tenant vem do user ligado ao token (não do body).
+   */
+  async acceptInvite(input: { token: string; name: string; password: string }): Promise<void> {
+    const tokenRow = await userTokenRepository.findByToken(input.token.trim(), 'invite');
+    if (!tokenRow || tokenRow.expiresAt.getTime() <= Date.now()) {
+      throw new AppError('Token inválido ou expirado', 400);
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      const user = await userRepository.findById(tokenRow.userId, { transaction });
+      if (!user) {
+        throw new AppError('Token inválido ou expirado', 400);
+      }
+
+      if (user.active) {
+        throw new BadRequestError('Convite já utilizado.');
+      }
+
+      const password_hash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
+      await userRepository.updateById(
+        user.id,
+        {
+          name: input.name.trim(),
+          password_hash,
+          active: true
+        },
+        { transaction }
+      );
+
+      await userTokenRepository.deleteById(tokenRow.id, { transaction });
+      await userTokenRepository.deleteByUserIdAndPurpose(user.id, 'invite', { transaction });
+    });
+  }
+
   async login(input: LoginInput): Promise<LoginResult> {
     const email = input.email.trim().toLowerCase();
     const user = await userRepository.findByEmail(email);
@@ -308,6 +345,10 @@ class AuthService {
 
     if (!user || !match) {
       throw new UnauthorizedError('Credenciais inválidas.');
+    }
+
+    if (!user.active) {
+      throw new ForbiddenError('Conta inativa. Aceite o convite ou contacte o administrador.');
     }
 
     if (user.role === 'ADMIN' && user.totpEnabledAt && user.totpSecret) {

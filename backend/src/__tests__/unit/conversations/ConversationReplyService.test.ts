@@ -39,18 +39,103 @@ describe('ConversationReplyService.processReply (unit)', () => {
     mockedAppointments.updateStatus.mockResolvedValue({ id: appointmentId } as never);
     mockedStates.clearState.mockResolvedValue(1);
 
-    await conversationReplyService.processReply(tenantId, phone, 'confirm_appointment', 'CONFIRMED');
+    await conversationReplyService.processReply({
+      tenantId,
+      tutorPhone: phone,
+      intent: 'confirm_appointment',
+      action: 'CONFIRMED'
+    });
 
     expect(mockedStates.getState).toHaveBeenCalledWith(tenantId, phone);
     expect(mockedAppointments.updateStatus).toHaveBeenCalledWith(appointmentId, tenantId, 'CONFIRMED');
     expect(mockedStates.clearState).toHaveBeenCalledWith(tenantId, phone);
   });
 
+  it('reagenda com suggestedDate (confirm_appointment + RESCHEDULE) e limpa state', async () => {
+    const suggestedDate = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    mockedStates.getState.mockResolvedValue({
+      expectedIntent: 'confirm_appointment',
+      referenceId: appointmentId
+    } as never);
+    mockedAppointments.updateStatus.mockResolvedValue({ id: appointmentId } as never);
+    mockedStates.clearState.mockResolvedValue(1);
+
+    await conversationReplyService.processReply({
+      tenantId,
+      tutorPhone: phone,
+      intent: 'confirm_appointment',
+      action: 'RESCHEDULE',
+      suggestedDate
+    });
+
+    expect(mockedAppointments.updateStatus).toHaveBeenCalledWith(
+      appointmentId,
+      tenantId,
+      'RESCHEDULE',
+      { newDate: suggestedDate }
+    );
+    expect(mockedStates.clearState).toHaveBeenCalledWith(tenantId, phone);
+  });
+
+  it('aceita RESCHEDULE quando o state espera reschedule_appointment', async () => {
+    const suggestedDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    mockedStates.getState.mockResolvedValue({
+      expectedIntent: 'reschedule_appointment',
+      referenceId: appointmentId
+    } as never);
+    mockedAppointments.updateStatus.mockResolvedValue({ id: appointmentId } as never);
+    mockedStates.clearState.mockResolvedValue(1);
+
+    await conversationReplyService.processReply({
+      tenantId,
+      tutorPhone: phone,
+      intent: 'reschedule_appointment',
+      action: 'RESCHEDULE',
+      suggestedDate
+    });
+
+    expect(mockedAppointments.updateStatus).toHaveBeenCalledWith(
+      appointmentId,
+      tenantId,
+      'RESCHEDULE',
+      { newDate: suggestedDate }
+    );
+  });
+
+  it('rejeita RESCHEDULE sem suggestedDate', async () => {
+    mockedStates.getState.mockResolvedValue({
+      expectedIntent: 'confirm_appointment',
+      referenceId: appointmentId
+    } as never);
+
+    await expect(
+      conversationReplyService.processReply({
+        tenantId,
+        tutorPhone: phone,
+        intent: 'confirm_appointment',
+        action: 'RESCHEDULE'
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringMatching(/suggestedDate/i)
+    });
+
+    expect(mockedAppointments.updateStatus).not.toHaveBeenCalled();
+    expect(mockedStates.clearState).not.toHaveBeenCalled();
+  });
+
   it('lança BadRequestError quando a sessão não existe ou expirou', async () => {
     mockedStates.getState.mockResolvedValue(null);
 
     await expect(
-      conversationReplyService.processReply(tenantId, phone, 'confirm_appointment', 'CONFIRMED')
+      conversationReplyService.processReply({
+        tenantId,
+        tutorPhone: phone,
+        intent: 'confirm_appointment',
+        action: 'CONFIRMED'
+      })
     ).rejects.toMatchObject({
       statusCode: 400,
       message: expect.stringMatching(/Sessão expirada ou não encontrada/i)
@@ -67,7 +152,12 @@ describe('ConversationReplyService.processReply (unit)', () => {
     } as never);
 
     await expect(
-      conversationReplyService.processReply(tenantId, phone, 'cancel_appointment', 'CANCELED')
+      conversationReplyService.processReply({
+        tenantId,
+        tutorPhone: phone,
+        intent: 'cancel_appointment',
+        action: 'CANCELED'
+      })
     ).rejects.toMatchObject({
       statusCode: 400,
       message: expect.stringMatching(/Desvio de fluxo/i)

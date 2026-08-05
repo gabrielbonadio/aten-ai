@@ -89,7 +89,10 @@ describe('AppointmentService.create (unit)', () => {
       date: appointmentDate,
       type: 'CONSULTATION',
       status: 'SCHEDULED',
-      notes: null
+      notes: null,
+      assignedUserId: null,
+      amountCents: null,
+      paymentStatus: 'PENDING'
     });
 
     expect(mockedWebhook.dispatch).toHaveBeenCalledWith(

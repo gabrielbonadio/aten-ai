@@ -1,6 +1,6 @@
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, Sequelize } from 'sequelize';
 
-export type UserTokenPurpose = 'password_reset' | 'refresh' | 'totp_pending';
+export type UserTokenPurpose = 'password_reset' | 'refresh' | 'totp_pending' | 'invite';
 
 class UserToken extends Model<InferAttributes<UserToken>, InferCreationAttributes<UserToken>> {
   declare id: CreationOptional<string>;
@@ -32,7 +32,7 @@ class UserToken extends Model<InferAttributes<UserToken>, InferCreationAttribute
           allowNull: false
         },
         purpose: {
-          type: DataTypes.ENUM('password_reset', 'refresh', 'totp_pending'),
+          type: DataTypes.ENUM('password_reset', 'refresh', 'totp_pending', 'invite'),
           allowNull: false,
           defaultValue: 'password_reset'
         },

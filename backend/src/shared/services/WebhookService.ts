@@ -12,7 +12,8 @@ export type N8nWebhookEvent =
   | 'appointment.created'
   | 'appointment.reminder'
   | 'appointment.followup'
-  | 'medical_record.created';
+  | 'medical_record.created'
+  | 'vaccine.reminder';
 
 export type N8nWebhookPayload = Record<string, unknown>;
 

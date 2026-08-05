@@ -23,6 +23,7 @@ const dashboardRoutes = Router();
  *                 totalPets: { type: number, example: 42 }
  *                 totalTutors: { type: number, example: 18 }
  *                 appointmentsToday: { type: number, example: 5 }
+ *                 paidAmountCentsToday: { type: number, example: 15000 }
  *                 recentAppointments:
  *                   type: array
  *                   items:
@@ -58,7 +59,23 @@ const dashboardRoutes = Router();
  */
 dashboardRoutes.get('/dashboard', ensureAuthenticated, ensureRole(['ADMIN']), DashboardController.show);
 
-dashboardRoutes.get('/dashboard/metrics', ensureAuthenticated, DashboardController.metrics);
+/**
+ * @openapi
+ * /dashboard/metrics:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Métricas v2 da clínica (somente ADMIN)
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Métricas do tenant }
+ *       403: { description: Sem permissão }
+ */
+dashboardRoutes.get(
+  '/dashboard/metrics',
+  ensureAuthenticated,
+  ensureRole(['ADMIN']),
+  DashboardController.metrics
+);
 
 export default dashboardRoutes;
 

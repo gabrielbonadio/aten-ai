@@ -8,6 +8,7 @@ import Pet from '../modules/pets/models/Pet';
 import Appointment from '../modules/appointments/models/Appointment';
 import MedicalRecord from '../modules/medical-records/models/MedicalRecord';
 import ConversationState from '../modules/conversations/models/ConversationState';
+import PetVaccination from '../modules/pet-vaccinations/models/PetVaccination';
 
 // Carrega as variáveis de ambiente
 dotenv.config();
@@ -38,6 +39,7 @@ Pet.initModel(sequelize);
 Appointment.initModel(sequelize);
 MedicalRecord.initModel(sequelize);
 ConversationState.initModel(sequelize);
+PetVaccination.initModel(sequelize);
 
 Tenant.hasMany(User, { foreignKey: 'tenantId', as: 'users' });
 User.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
@@ -60,6 +62,9 @@ Appointment.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
 Pet.hasMany(Appointment, { foreignKey: 'petId', as: 'appointments' });
 Appointment.belongsTo(Pet, { foreignKey: 'petId', as: 'pet' });
 
+User.hasMany(Appointment, { foreignKey: 'assignedUserId', as: 'assignedAppointments' });
+Appointment.belongsTo(User, { foreignKey: 'assignedUserId', as: 'assignedUser' });
+
 Tenant.hasMany(MedicalRecord, { foreignKey: 'tenantId', as: 'medicalRecords' });
 MedicalRecord.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
 
@@ -71,5 +76,11 @@ MedicalRecord.belongsTo(Appointment, { foreignKey: 'appointmentId', as: 'appoint
 
 User.hasMany(MedicalRecord, { foreignKey: 'veterinarianId', as: 'medicalRecords' });
 MedicalRecord.belongsTo(User, { foreignKey: 'veterinarianId', as: 'veterinarian' });
+
+Tenant.hasMany(PetVaccination, { foreignKey: 'tenantId', as: 'petVaccinations' });
+PetVaccination.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
+
+Pet.hasMany(PetVaccination, { foreignKey: 'petId', as: 'vaccinations' });
+PetVaccination.belongsTo(Pet, { foreignKey: 'petId', as: 'pet' });
 
 export default sequelize;

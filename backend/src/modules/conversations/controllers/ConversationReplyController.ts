@@ -22,20 +22,27 @@ class ConversationReplyController {
   /**
    * POST /api/v1/conversations/reply
    *
-   * Corpo esperado: `{ tenantId, tutorPhone, intent, action }`
+   * Corpo: `{ tenantId, tutorPhone, intent, action, suggestedDate? }`
    * — rota protegida por shared secret (`Authorization: Bearer <N8N_WEBHOOK_SECRET>`).
-   * A mutação só ocorre se existir ConversationState válido para tenantId+phone+intent.
+   * Não logar tutorPhone (PII).
    */
   async reply(req: Request, res: Response): Promise<void> {
     try {
       const tenantId = resolveTenantId(req);
-      const { tutorPhone, intent, action } = req.body as {
+      const { tutorPhone, intent, action, suggestedDate } = req.body as {
         tutorPhone: string;
         intent: ConversationIntent;
         action: ConversationReplyAction;
+        suggestedDate?: string | Date;
       };
 
-      await conversationReplyService.processReply(tenantId, tutorPhone, intent, action);
+      await conversationReplyService.processReply({
+        tenantId,
+        tutorPhone,
+        intent,
+        action,
+        suggestedDate: suggestedDate !== undefined ? new Date(suggestedDate) : undefined
+      });
 
       res.status(200).json({ message: 'Resposta processada com sucesso.' });
     } catch (err) {
@@ -46,7 +53,8 @@ class ConversationReplyController {
       }
 
       logger.error('conversations.reply_unexpected', {
-        error: err instanceof Error ? err.message : String(err)
+        error: err instanceof Error ? err.message : String(err),
+        tenantId: (req.body as { tenantId?: unknown })?.tenantId
       });
       res.status(500).json({ message: 'Erro interno ao processar a resposta da conversa.' });
     }

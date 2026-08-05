@@ -4,11 +4,12 @@ import { validateEnv } from './shared/config/validateEnv';
 import sequelize from './config/database';
 import appointmentFollowupsJob from './modules/appointments/jobs/AppointmentFollowupsJob';
 import appointmentRemindersJob from './modules/appointments/jobs/AppointmentRemindersJob';
+import vaccineRemindersJob from './modules/pet-vaccinations/jobs/VaccineRemindersJob';
 import { startConversationGC } from './modules/conversations/jobs/ConversationGarbageCollector';
 import { logger } from './shared/logging/logger';
 
 /**
- * Processo dedicado para jobs (lembretes, follow-ups, GC).
+ * Processo dedicado para jobs (lembretes, follow-ups, vacinas, GC).
  * Use com ENABLE_IN_PROCESS_JOBS=false na API para scale-out horizontal sem duplicar WhatsApps.
  */
 initSentry();
@@ -21,10 +22,11 @@ const startWorker = async () => {
 
     appointmentRemindersJob.start();
     appointmentFollowupsJob.start();
+    vaccineRemindersJob.start();
     startConversationGC();
 
     logger.info('worker.jobs.started', {
-      jobs: ['appointmentReminders', 'appointmentFollowups', 'conversationGC']
+      jobs: ['appointmentReminders', 'appointmentFollowups', 'vaccineReminders', 'conversationGC']
     });
   } catch (error) {
     logger.error('worker.boot_failed', {

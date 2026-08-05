@@ -8,6 +8,7 @@ import {
 } from '../../shared/middlewares/rateLimit';
 import AuthController from './controllers/AuthController';
 import {
+  acceptInviteSchema,
   forgotPasswordSchema,
   loginSchema,
   loginTotpSchema,
@@ -56,6 +57,35 @@ authRoutes.post(
   passwordResetRateLimiter,
   validateSchema(resetPasswordSchema),
   AuthController.resetPassword
+);
+
+/**
+ * @openapi
+ * /auth/accept-invite:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Aceitar convite de equipe
+ *     description: Define nome e senha do usuário convidado (inactive → active) e invalida o token. Tenant vem do user ligado ao token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, name, password]
+ *             properties:
+ *               token: { type: string }
+ *               name: { type: string }
+ *               password: { type: string }
+ *     responses:
+ *       204: { description: Convite aceito }
+ *       400: { description: Token inválido/expirado ou convite já utilizado }
+ */
+authRoutes.post(
+  '/auth/accept-invite',
+  passwordResetRateLimiter,
+  validateSchema(acceptInviteSchema),
+  AuthController.acceptInvite
 );
 
 authRoutes.post(

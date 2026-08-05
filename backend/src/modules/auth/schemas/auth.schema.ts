@@ -31,6 +31,12 @@ export const resetPasswordSchema = Joi.object({
   password: passwordSchema
 });
 
+export const acceptInviteSchema = Joi.object({
+  token: Joi.string().trim().min(32).required(),
+  name: Joi.string().trim().min(1).max(255).required(),
+  password: passwordSchema
+});
+
 export const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().trim().min(32).optional()
 });

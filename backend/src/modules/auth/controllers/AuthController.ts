@@ -67,6 +67,12 @@ class AuthController {
     res.status(204).send();
   }
 
+  async acceptInvite(req: Request, res: Response): Promise<void> {
+    const { token, name, password } = req.body as { token: string; name: string; password: string };
+    await authService.acceptInvite({ token, name, password });
+    res.status(204).send();
+  }
+
   async refresh(req: Request, res: Response): Promise<void> {
     const refreshToken = resolveRefreshToken(req);
     if (!refreshToken) {

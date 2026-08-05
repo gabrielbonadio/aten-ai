@@ -9,7 +9,8 @@ export const userTenantA = {
   email: 'admin@tenant-a.com',
   password_hash: '$2a$12$mockedhashmockedhashmockedhashmocked',
   role: 'ADMIN' as const,
-  tenantId: TENANT_A_ID
+  tenantId: TENANT_A_ID,
+  active: true
 };
 
 export const userTenantB = {
@@ -18,7 +19,8 @@ export const userTenantB = {
   email: 'admin@tenant-b.com',
   password_hash: '$2a$12$mockedhashmockedhashmockedhashmocked',
   role: 'ADMIN' as const,
-  tenantId: TENANT_B_ID
+  tenantId: TENANT_B_ID,
+  active: true
 };
 
 export const tenantA = {
