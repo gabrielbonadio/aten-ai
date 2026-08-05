@@ -106,12 +106,27 @@ body {
   .ui-toast-enter {
     animation: ui-toast-in var(--ui-duration) var(--ui-ease) both;
   }
+
+  .ui-auth-enter {
+    animation: ui-auth-in 220ms var(--ui-ease) both;
+  }
 }
 
 @keyframes ui-toast-in {
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-auth-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -174,6 +189,10 @@ body {
   }
 
   .ui-toast-enter {
+    animation: none !important;
+  }
+
+  .ui-auth-enter {
     animation: none !important;
   }
 }

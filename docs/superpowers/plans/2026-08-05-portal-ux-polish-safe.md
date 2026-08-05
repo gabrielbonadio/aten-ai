@@ -121,7 +121,7 @@ Opcional (ops, sem UI): criar `frontend/.21st/design.json` com constraints (“A
 [x] Tag/nota do baseline pós-push FE produto (`fe-pre-ux-polish`)
 [x] Fase A → browser → commit
 [x] Fase B → browser → commit
-[ ] (opcional) Fase C → browser → commit
+[x] (opcional) Fase C → browser → commit
 [ ] Se não gostar da fase N: git revert desse commit (ou checkout do path frontend/)
 ```
 
